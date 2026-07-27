@@ -162,6 +162,28 @@ portfolio work was driven from this repo and several findings came out of it.
 - **star-watch fixed** — it watched only grokscope (0 stars) while 4 other repos
   quietly collected 5. Now enumerates all 33 repos from one place.
 
+### npm v12 allowScripts decisions recorded (4 repos)
+
+npm v12 does not run dependency install scripts unless `allowScripts` lists them,
+so a repo with a native dependency and no allowlist installs "successfully" and
+then fails at `require` time. Four repos were in that state. Each HIGH package was
+reviewed on its behaviour *and* its publisher signals before approval:
+
+| Repo | Approved | Why it was safe to approve |
+| --- | --- | --- |
+| gemi-research-daemon | `better-sqlite3@12.11.1` | 8.8M dl/wk, provenance ✓ — `node-gyp rebuild` is its job |
+| cargo-witness | `better-sqlite3@13.0.1` | same, but ⚠️ published 6 days ago — recency flagged, provenance ✓ |
+| ts7-compat-guard | `esbuild@0.28.1` | 261M dl/wk, provenance ✓ |
+| grok-loop-kit | `esbuild@0.27.7` (via tsup) | same |
+
+Version-pinned deliberately: approval does not carry to a version nobody has
+looked at, which is exactly what a hijacked release exploits. `npm-script-lens
+review` now reports **nothing pending** in all four, and `sync --check` passes.
+
+**Enforcement added**: every Guards workflow now runs
+`npm-script-lens sync --path . --check`, which exits 1 when a dependency gains an
+install script nobody approved. An allowlist nothing enforces is decoration.
+
 ### Bugs found by dogfooding our own tools
 
 - `mcp-vet` on **our own** MCP server → BREAKING: `initialize` handler removed in the
