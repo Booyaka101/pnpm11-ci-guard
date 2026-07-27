@@ -36,16 +36,43 @@ const SRC_MODULES = [
   'action-main.js',
 ];
 
-function readJsYamlUmd() {
+/**
+ * Locate a self-contained js-yaml build to inline.
+ *
+ * js-yaml 5 renamed the CommonJS bundle to `dist/js-yaml.cjs.js` (v4 shipped a UMD
+ * `dist/js-yaml.js`), so both layouts are probed. Either file assigns onto `exports`
+ * and pulls in nothing external, which is exactly what the module shim below needs.
+ */
+function readJsYamlBundle() {
+  const dist = path.join(ROOT, 'node_modules', 'js-yaml', 'dist');
   const candidates = [
-    path.join(ROOT, 'node_modules', 'js-yaml', 'dist', 'js-yaml.js'),
-    path.join(ROOT, 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'),
+    path.join(dist, 'js-yaml.cjs.js'), // js-yaml 5
+    path.join(dist, 'js-yaml.js'), // js-yaml 4 (UMD)
+    path.join(dist, 'browser', 'js-yaml.umd.min.js'), // js-yaml 5 fallback
+    path.join(dist, 'js-yaml.min.js'), // js-yaml 4 fallback
   ];
+
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return { source: fs.readFileSync(candidate, 'utf8'), from: candidate };
+    if (!fs.existsSync(candidate)) continue;
+    const raw = fs.readFileSync(candidate, 'utf8');
+
+    const external = [...raw.matchAll(/\brequire\((['"])([^'"]+)\1\)/g)].map((m) => m[2]);
+    if (external.length > 0) {
+      throw new Error(
+        `${path.relative(ROOT, candidate)} is not self-contained (requires ${external.join(', ')}); ` +
+          'it cannot be inlined into the action bundle.'
+      );
+    }
+
+    // The sourcemap comment points at a .map that is not shipped alongside dist/action.js.
+    const source = raw.replace(/^\/\/# sourceMappingURL=.*$/m, '').trimEnd();
+    return { source, from: candidate };
   }
+
   throw new Error(
-    'js-yaml UMD build not found. Run `npm install` first (looked for node_modules/js-yaml/dist/js-yaml.js).'
+    'No js-yaml bundle found. Run `npm install` first (looked for ' +
+      candidates.map((c) => path.relative(ROOT, c)).join(', ') +
+      ').'
   );
 }
 
@@ -60,7 +87,7 @@ function wrap(id, source) {
 
 function build() {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  const jsYaml = readJsYamlUmd();
+  const jsYaml = readJsYamlBundle();
 
   const parts = [];
   parts.push('/*');

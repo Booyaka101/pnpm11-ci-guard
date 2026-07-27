@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-07-27
+
+Everything this repo depends on is now on its current major, and kept there
+automatically rather than by memory.
+
+### Changed
+
+- **js-yaml 4 → 5.2.2.** The parsing API used here (`load`, `err.mark.line`,
+  `err.reason`) is unchanged; all 93 tests pass untouched. js-yaml 5 renamed its
+  CommonJS bundle to `dist/js-yaml.cjs.js`, so `scripts/build-action.js` now probes
+  both layouts, verifies whichever it finds pulls in nothing external before inlining
+  it, and strips the sourcemap comment that would otherwise dangle in `dist/action.js`.
+- **`actions/checkout` v4 → v7**, **`actions/setup-node` v4 → v7** in CI.
+- **CI matrix adds Node 26**, now ubuntu + windows × node 18/20/22/24/26.
+
+### Added
+
+- **`.github/dependabot.yml`** — weekly grouped updates for npm and github-actions,
+  so this does not go stale again.
+
+### Not changed
+
+- `runs.using: node24` in `action.yml`. Verified against GitHub's metadata-syntax
+  reference: `node20` and `node24` are the only JavaScript action runtimes, so this
+  is already the newest available. There is no `node26`.
+
 ## [1.1.0] — 2026-07-27
 
 Repositioned around the gap pnpm's own tooling leaves open, after confirming that
