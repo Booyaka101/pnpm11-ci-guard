@@ -1,32 +1,39 @@
 # PROGRESS — pnpm11-ci-guard
 
-**Status: v1.2.0 SHIPPED.** Last updated: 2026-07-27.
+**Status: v1.2.2 SHIPPED — fully distributed.** Last updated: 2026-07-27.
 
 | Channel | State |
 | --- | --- |
-| npm | **live** — https://www.npmjs.com/package/pnpm11-ci-guard @ 1.2.0 (`npx pnpm11-ci-guard` verified from the registry) |
-| GitHub | **live** — https://github.com/Booyaka101/pnpm11-ci-guard (`v1.2.0` + moving `v1`) |
-| Release | **live** — https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.2.0 |
-| CI | **green** — 10/10 matrix (ubuntu+windows × node 18/20/22/24/26) plus the dogfood job that runs the Action against both examples |
-| Docs PR to pnpm | **APPROVED, open** — https://github.com/pnpm/pnpm.io/pull/845 |
-| Marketplace | **NOT DONE — needs the web UI**, see below |
+| npm | **live** — https://www.npmjs.com/package/pnpm11-ci-guard @ **1.2.2** (`npx pnpm11-ci-guard` verified from the registry) |
+| GitHub | **live** — https://github.com/Booyaka101/pnpm11-ci-guard (`v1.2.2` + moving `v1`) |
+| Release | **live** — https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.2.2 |
+| Actions Marketplace | **listed** (owner confirmed) |
+| CI | **green** — 10/10 matrix (ubuntu+windows × node 18/20/22/24/26), plus the dogfood job and the Guards job |
+| Docs PR to pnpm | **APPROVED, awaiting merge** — https://github.com/pnpm/pnpm.io/pull/845 |
+| Launch post | **held deliberately** until the pnpm PR merges — see below |
 
 The pnpm PR was reviewed (CodeRabbit), one real contradiction found and fixed —
 `migration.md` said Docker images "must" copy the file while `docker.md` said it
 could be omitted — and it is now approved. Its only red check is Vercel's preview
 deploy, which a pnpm team member has to authorize for outside contributors.
 
-### The one remaining step (owner, ~60 seconds, phone is fine)
+### Marketplace publishing: what actually blocked it
 
-GitHub has no API for Marketplace publishing; it is a checkbox in the release editor.
+Worth recording, because the error is not discoverable until you try:
 
-1. Open https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.1.0
-2. **Edit release** → tick **"Publish this Action to the GitHub Marketplace"**
-3. Accept the developer agreement if prompted, pick categories
-   (*Continuous integration* + *Dependency management*), **Update release**.
+- **`action.yml` `description` must be under 125 characters.** Ours was 209 and
+  GitHub refused with *"Your action.yml needs changes before it can be published"*.
+  Fixed in 1.2.1/1.2.2 (now 106). ghas-free-pack hit the same wall at 264.
+- **GitHub caches that validation.** After fixing and re-tagging, the checkbox still
+  refused to tick until a hard reload (`Page.reload {ignoreCache:true}`).
+- The release form's Marketplace section is **hidden at phone-width viewports**
+  (~390px), which is its own source of "I can't find the checkbox".
 
-`action.yml` already carries the required `name`, `description`, `author` and
-`branding`, so the checkbox will not be blocked.
+### Launch: held on purpose
+
+pnpm11-ci-guard has **not** been announced. That is deliberate: the strongest
+opening is "I found and fixed the gap in pnpm's own migration guide", which needs
+PR #845 merged first. Copy is ready to adapt from `ghas-free-pack/docs/LAUNCH.md`.
 
 ---
 
@@ -87,7 +94,7 @@ to close it.
   table; exits 1. Driven with real GitHub env vars. The Action never writes files.
 - **Self-contained bundle**: js-yaml inlined; a test asserts the committed
   `dist/action.js` is byte-identical to a fresh build.
-- **Clean-path install of 1.1.0**: `npm pack` → fresh folder → relative tarball →
+- **Clean-path install** (verified at 1.1.0 and again at 1.2.x): `npm pack` → fresh folder → relative tarball →
   `--version`, `require()` and `--fix` all verified. Root manifest unpolluted.
 - **Tests**: 92, `npm test`, all passing, no test-framework dependency.
 - **Reality handling**: missing dir → exit 2 with a message; malformed JSON/YAML →
@@ -104,23 +111,79 @@ to close it.
 | 2 | No mocks/placeholders/fake data | **MET** — fixtures only in `test/fixtures/`, samples only in labelled `examples/` |
 | 3 | Real end-to-end run on real input | **MET** — 15 real repos scanned; `--fix` applied to a real repo and diffed |
 | 4 | Handles reality | **MET** — no network calls exist, so no rate-limit path |
-| 5 | Tests + command | **MET** — `npm test`, 92 passing |
-| 6 | Publish-ready packaging | **MET** — clean-path install of the 1.1.0 tarball verified |
+| 5 | Tests + command | **MET** — `npm test`, 93 passing |
+| 6 | Publish-ready packaging | **MET** — clean-path install verified; Marketplace-legal `action.yml` |
 | 7 | README a stranger can follow | **MET** — leads with the codemod relationship |
-| 8 | Coherent release | **MET** — 1.1.0 + CHANGELOG documenting what was cut and why |
+| 8 | Coherent release | **MET** — 1.2.2 + CHANGELOG documenting what was cut and why |
 
 **Nothing is unmet.**
 
 ---
 
-## What shipped, and what is still open
+## Shipped 2026-07-27 — full day's record
 
-Done: git repo + tags, GitHub repo, release, npm publish (verified via `npx` from the
-public registry), CI green on 8 platform/version combinations, cross-links between
-this and npm-script-lens, and the pnpm docs PR.
+This project shipped alongside a portfolio-wide pass. Recorded here because the
+portfolio work was driven from this repo and several findings came out of it.
 
-**Open — Marketplace checkbox** (see the top of this file). That is the last step and
-it cannot be automated.
+### npm — every package in sync with its repo (verified against the registry)
+
+| Package | Version | What shipped today |
+| --- | --- | --- |
+| `pnpm11-ci-guard` | **1.2.2** | new product; `--fix`; 4 new rules; Marketplace-legal description |
+| `ghas-free-pack` | **v1.0.0** (Action, no npm pkg) | new product, first publish |
+| `npm-script-lens` | **1.4.0** | MCP dual-era handshake fix |
+| `@booyaka/mcp-vet` | **0.8.0** | Windows libuv crash fix; chalk dropped; `engines >=22` |
+| `ts7-compat-guard` | **2.2.0** | two new rules found by real upgrades |
+| `cargo-witness` | **1.2.1** | ESM-only `node-fetch` removed (−40 packages) |
+| `grok-loop-kit` | **1.1.0** | `engines >=20` corrected |
+| `mcp-app-debug` | **0.2.0** | released work stranded on main since 0.1.0 |
+| `grokscope` / `gemcatch` | 1.3.0 / 0.3.0 | unchanged, CI + deps refreshed |
+
+### Other channels
+
+- **VS Code Marketplace** — `Booyaka101.npm-script-lens` **1.3.0** live. Note the
+  publisher resolves with a capital **B**. Verified via `vsce show` and the gallery
+  API (VSIX asset present), *not* by trusting `vsce`'s `DONE` line — see below.
+- **GitHub Actions Marketplace** — 6 actions listed.
+- **dev.to** — ghas-free-pack article published.
+- **X** — ghas-free-pack announce, read back verbatim from the permalink.
+
+### Portfolio-wide engineering
+
+- **11 repos green**, zero open Dependabot PRs.
+- **Dependabot on every repo**, `minor`+`patch` grouped and **majors isolated** —
+  the original `patterns:['*']` grouping mixed breaking majors with safe patches so
+  one bad upgrade reddened the whole batch and nothing was mergeable.
+- **Guards workflow everywhere**: pnpm11-ci-guard on all, npm-script-lens where a
+  lockfile exists, ts7-compat-guard where a tsconfig exists, mcp-vet on the two
+  repos that ship MCP servers, ghas-free-pack where Shell/Docker/TF/PHP exist.
+- **Actions on latest**: `checkout` v4→**v7**, `setup-node` v4→**v7**, plus
+  setup-python/cache/upload-artifact/deploy-pages/codeql-action; node 26 added.
+- **star-watch fixed** — it watched only grokscope (0 stars) while 4 other repos
+  quietly collected 5. Now enumerates all 33 repos from one place.
+
+### Bugs found by dogfooding our own tools
+
+- `mcp-vet` on **our own** MCP server → BREAKING: `initialize` handler removed in the
+  2026-07-28 spec. Fixed as **dual-era** (both revisions work) rather than deleting
+  the handler, which would have satisfied the linter and broken every live client.
+- `ts7-compat-guard` reported three repos clean that then failed to build on TS 7.
+  Both causes are now rules in it: missing tsconfig `types` and `tsup`'s Compiler-API
+  declaration emit.
+- TypeScript 7 upgrades for `mcp-vet` and `grok-loop-kit` are **blocked upstream**
+  (`ts-morph`, `tsup`). Closed with reasons + a Dependabot `ignore` on that major.
+
+### Process lessons worth keeping
+
+- **A zero exit code is not evidence.** `vsce publish` printed `DONE Published` while
+  the extension never reached the gallery. `scripts/preflight.mjs` in
+  `npm-script-lens/editors/vscode` now checks the publisher resolves before a token is
+  used, and publication is confirmed via `vsce show`, not the CLI's own success line.
+- **Stale `node_modules` fakes a green test run.** cargo-witness passed locally only
+  because a CommonJS `node-fetch@2` lingered while `package.json` declared ESM-only
+  v3. Verify dependency fixes from a clean `rm -rf node_modules && npm ci`.
+- **Read the exit code before theorising.** The mcp-vet Windows failure looked like a
+  flaky test; `3221226505` (0xC0000409) showed it was a libuv assertion crash.
 
 **Open — pnpm/pnpm.io#845.** The PR fixes pnpm's own v11 Dockerfile example, which
 copies `package.json` and `pnpm-lock.yaml` but not `pnpm-workspace.yaml` — so it
@@ -130,21 +193,31 @@ rejected and deserves to. If maintainers prefer a `pnpm-workspace.yaml*` glob so
 example stays copy-pasteable for projects without the file, that alternative is
 already offered in the PR body.
 
-### Known cosmetic drift
+## Next
 
-The npm tarball for 1.1.0 carries the pre-fix `"test"` script
-(`node --test "test/*.test.js"`) because the CI fix landed after publish. Harmless —
-neither `test/` nor `scripts/` is in `files`, so no published script path changed.
-Left alone deliberately rather than burning a 1.1.1 on a non-shipped field; it
-corrects itself on the next real release.
+**Nothing is blocked on engineering.** The one open thread is external:
+**pnpm/pnpm.io#845** is approved and awaiting a maintainer merge. When it lands,
+that is the cue to publish the pnpm11-ci-guard launch post — the "I fixed the gap in
+pnpm's own migration guide" opening is worth waiting for.
 
-## If you want a next release
+### If you want a next release
 
 - **SARIF output**, to match `ts7-compat-guard`, `cargo-witness` and `ghas-free-pack`.
   Deliberately deferred: it serves code-scanning dashboards, not the migrating dev who
   is the actual user. Do it when someone asks — that ask is the signal.
 - `--fix` for `ENV CI=true` (changes build behaviour, so it stays a human call).
 - Composite actions and reusable-workflow `env:` outside `.github/workflows/`.
+
+### Watch for
+
+- **TypeScript 7 unblocking.** When `ts-morph` and `tsup` support the native
+  compiler, drop the `typescript` major `ignore` from mcp-vet's and grok-loop-kit's
+  `dependabot.yml` and the upgrade PRs return on their own.
+- **better-sqlite3 14+ Windows prebuilds.** gemi-research-daemon is held at 12
+  because 13 fails `node-gyp` on `windows-latest`.
+- **The first star ping.** star-watch's baseline is recorded; the next star on any of
+  the 33 repos sends a Telegram message. If one arrives and nothing pings, that
+  workflow is the thing to debug.
 
 ## Ideas deliberately left out
 
