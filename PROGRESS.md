@@ -96,7 +96,7 @@ to close it.
   `dist/action.js` is byte-identical to a fresh build.
 - **Clean-path install** (verified at 1.1.0 and again at 1.2.x): `npm pack` → fresh folder → relative tarball →
   `--version`, `require()` and `--fix` all verified. Root manifest unpolluted.
-- **Tests**: 92, `npm test`, all passing, no test-framework dependency.
+- **Tests**: 93, `npm test`, all passing, no test-framework dependency.
 - **Reality handling**: missing dir → exit 2 with a message; malformed JSON/YAML →
   WARN and continue; unreadable dirs, broken symlinks, symlink loops, BOMs,
   unwritable `GITHUB_OUTPUT`, empty dirs, `node_modules` exclusion.
