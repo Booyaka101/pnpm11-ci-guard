@@ -1,7 +1,27 @@
 # PROGRESS — pnpm11-ci-guard
 
-**Status: v1.1.0 COMPLETE and VERIFIED. Ready for the owner to publish.**
-Last updated: 2026-07-27.
+**Status: v1.1.0 SHIPPED.** Last updated: 2026-07-27.
+
+| Channel | State |
+| --- | --- |
+| npm | **live** — https://www.npmjs.com/package/pnpm11-ci-guard (`npx pnpm11-ci-guard` verified from the registry) |
+| GitHub | **live** — https://github.com/Booyaka101/pnpm11-ci-guard (`v1.1.0` + moving `v1`) |
+| Release | **live** — https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.1.0 |
+| CI | **green** — 8/8 matrix (ubuntu+windows × node 18/20/22/24) plus the dogfood job that runs the Action against both examples |
+| Docs PR to pnpm | **open** — https://github.com/pnpm/pnpm.io/pull/845 |
+| Marketplace | **NOT DONE — needs the web UI**, see below |
+
+### The one remaining step (owner, ~60 seconds, phone is fine)
+
+GitHub has no API for Marketplace publishing; it is a checkbox in the release editor.
+
+1. Open https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.1.0
+2. **Edit release** → tick **"Publish this Action to the GitHub Marketplace"**
+3. Accept the developer agreement if prompted, pick categories
+   (*Continuous integration* + *Dependency management*), **Update release**.
+
+`action.yml` already carries the required `name`, `description`, `author` and
+`branding`, so the checkbox will not be blocked.
 
 ---
 
@@ -88,24 +108,38 @@ to close it.
 
 ---
 
-## Next steps (owner action — deliberately NOT done here)
+## What shipped, and what is still open
 
-1. `git init && git add -A && git commit -m "pnpm11-ci-guard v1.1.0"` — no git repo
-   has been initialised here.
-2. Push to `github.com/Booyaka101/pnpm11-ci-guard`. If the owner/name differs,
-   update `repository`/`homepage`/`bugs` in `package.json`, the
-   `uses: Booyaka101/pnpm11-ci-guard@v1` line in `README.md`, and the matching
-   assertion in `test/packaging.test.js`.
-3. Tag `v1.1.0`, push a moving `v1` tag.
-4. **Best first distribution step**: Releases → *Draft a new release* → tick
-   *Publish this Action to the GitHub Marketplace*. `action.yml` already carries
-   `name`, `description`, `author`, `branding`.
-   The pitch is one line: **the codemod does your config, this does your CI.**
-5. `npm publish` second (`pnpm11-ci-guard` was unclaimed — registry 404 on
-   2026-07-27).
-6. Consider filing a docs PR against `pnpm/pnpm.io` adding "COPY pnpm-workspace.yaml"
-   to the migration guide's Docker notes — it is a genuine documentation gap, and
-   the link back is worth more than any launch post.
+Done: git repo + tags, GitHub repo, release, npm publish (verified via `npx` from the
+public registry), CI green on 8 platform/version combinations, cross-links between
+this and npm-script-lens, and the pnpm docs PR.
+
+**Open — Marketplace checkbox** (see the top of this file). That is the last step and
+it cannot be automated.
+
+**Open — pnpm/pnpm.io#845.** The PR fixes pnpm's own v11 Dockerfile example, which
+copies `package.json` and `pnpm-lock.yaml` but not `pnpm-workspace.yaml` — so it
+teaches the exact pattern this tool's `docker-missing-workspace-copy` rule flags. It
+contains **no mention of this tool**; a docs PR that plugs the author's product gets
+rejected and deserves to. If maintainers prefer a `pnpm-workspace.yaml*` glob so the
+example stays copy-pasteable for projects without the file, that alternative is
+already offered in the PR body.
+
+### Known cosmetic drift
+
+The npm tarball for 1.1.0 carries the pre-fix `"test"` script
+(`node --test "test/*.test.js"`) because the CI fix landed after publish. Harmless —
+neither `test/` nor `scripts/` is in `files`, so no published script path changed.
+Left alone deliberately rather than burning a 1.1.1 on a non-shipped field; it
+corrects itself on the next real release.
+
+## If you want a next release
+
+- **SARIF output**, to match `ts7-compat-guard`, `cargo-witness` and `ghas-free-pack`.
+  Deliberately deferred: it serves code-scanning dashboards, not the migrating dev who
+  is the actual user. Do it when someone asks — that ask is the signal.
+- `--fix` for `ENV CI=true` (changes build behaviour, so it stays a human call).
+- Composite actions and reusable-workflow `env:` outside `.github/workflows/`.
 
 ## Ideas deliberately left out
 
