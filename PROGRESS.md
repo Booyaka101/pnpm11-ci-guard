@@ -195,6 +195,51 @@ install script nobody approved. An allowlist nothing enforces is decoration.
 - TypeScript 7 upgrades for `mcp-vet` and `grok-loop-kit` are **blocked upstream**
   (`ts-morph`, `tsup`). Closed with reasons + a Dependabot `ignore` on that major.
 
+### Committed action bundles — coupling audit (all 3 repos)
+
+`ts7-compat-guard` went red three times in one day, always on `bundle-drift`:
+the tsconfig-types rule, the allowScripts commit, and the drift-gate commit. I
+rebuilt `dist/` reactively each time before noticing three occurrences is a cause,
+not three incidents.
+
+**Cause**: `src/action.js` had `require('../package.json').version`, and **esbuild
+inlines the entire manifest** when it sees that. So an `allowScripts` entry — which
+has nothing to do with the Action — changed `dist/action.js`. Fixed by injecting the
+version via esbuild's `define` (`scripts/build.mjs`), making the bundle a pure
+function of the source.
+
+Only three repos commit a build artifact. Each was then probed the same way — add a
+throwaway `package.json` field, rebuild, byte-compare `dist/` — which works
+regardless of bundler:
+
+| Repo | Bundler | Result |
+| --- | --- | --- |
+| `ts7-compat-guard` | esbuild | **was coupled — fixed**, verified byte-identical after the probe |
+| `pnpm11-ci-guard` | hand-rolled | decoupled; inlines only `{name, version}` by design |
+| `cargo-witness` | ncc | decoupled; source never requires the manifest |
+
+A version bump *does* still change these bundles, which is correct — that is real
+coupling, not accidental.
+
+**Two of my own mistakes surfaced here, both worth not repeating:**
+
+- An earlier "cargo-witness dist is clean" check was **invalid**: I ran `npm run
+  build`, but that repo's script is `build:action`. npm errored, nothing rebuilt, and
+  I read the silence as a pass.
+- I reported cargo-witness's drift warning "fires on every run". It never has —
+  **zero warning annotations**. I was grepping the CI log for the warning text, but a
+  workflow's `run:` command is echoed into the log, so I matched the
+  `echo "::warning::…"` string in the command itself rather than its output. This is
+  the same shape as GitHub's hidden pre-rendered error templates on the release page,
+  which caught me earlier the same day. **Assert on emitted output or annotations,
+  never on text that also appears in the source being executed.**
+
+That correction unlocked the actual improvement: cargo-witness's bundle check was
+warning-only on the assumption ncc output varies across platforms. Measured — a
+Linux build (`docker node:24`, ncc 0.44.1 from the lockfile) is **byte-identical** to
+the Windows-committed bundle. It is now a hard failure, matching the other two. The
+originally-requested fix (move the build to Linux) turned out to be unnecessary.
+
 ### Process lessons worth keeping
 
 - **A zero exit code is not evidence.** `vsce publish` printed `DONE Published` while
@@ -206,6 +251,15 @@ install script nobody approved. An allowlist nothing enforces is decoration.
   v3. Verify dependency fixes from a clean `rm -rf node_modules && npm ci`.
 - **Read the exit code before theorising.** The mcp-vet Windows failure looked like a
   flaky test; `3221226505` (0xC0000409) showed it was a libuv assertion crash.
+- **Never grep a CI log for the text of the command that produced it.** A workflow's
+  `run:` block is echoed into the log verbatim, so searching for
+  `echo "::warning::…"` matches the command, not the warning. Check annotations or
+  step conclusions instead. Same trap as GitHub's hidden pre-rendered `.flash-error`
+  templates — both cost time on 2026-07-27.
+- **Three occurrences is a cause, not three incidents.** `bundle-drift` was rebuilt
+  reactively three times before the shared root cause was looked for.
+- **Verify a "clean" check actually ran.** `npm run build` on a repo whose script is
+  `build:action` errors silently under `>/dev/null 2>&1` and looks like a pass.
 
 **Open — pnpm/pnpm.io#845.** The PR fixes pnpm's own v11 Dockerfile example, which
 copies `package.json` and `pnpm-lock.yaml` but not `pnpm-workspace.yaml` — so it
