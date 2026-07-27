@@ -1,6 +1,6 @@
 {
   "name": "pnpm11-ci-guard",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Detect pnpm v11 silent-failure patterns in Dockerfiles, GitHub Actions workflows and package.json — npm_config_* env vars that are now ignored, the dropped 'pnpm' field, and Dockerfiles that never COPY pnpm-workspace.yaml.",
   "keywords": [
     "pnpm",

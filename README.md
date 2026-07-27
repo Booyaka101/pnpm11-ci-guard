@@ -118,7 +118,7 @@ jobs:
   pnpm-v11-guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Booyaka101/pnpm11-ci-guard@v1
         with:
           root-dir: '.'                    # optional
