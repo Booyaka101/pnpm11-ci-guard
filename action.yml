@@ -1,8 +1,6 @@
 name: pnpm11-ci-guard
-description: >-
-  Detect pnpm v11 silent-failure patterns in Dockerfiles, GitHub Actions workflows
-  and package.json — ignored npm_config_* env vars, the dropped 'pnpm' field, and
-  Dockerfiles that never COPY pnpm-workspace.yaml.
+# Marketplace rejects a description of 125 characters or more.
+description: 'Catch the pnpm v11 migration in your Dockerfiles and CI workflows — where pnpm''s own codemod never looks.'
 author: Booyaka101
 
 branding:
