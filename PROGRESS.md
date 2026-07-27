@@ -1,15 +1,20 @@
 # PROGRESS — pnpm11-ci-guard
 
-**Status: v1.1.0 SHIPPED.** Last updated: 2026-07-27.
+**Status: v1.2.0 SHIPPED.** Last updated: 2026-07-27.
 
 | Channel | State |
 | --- | --- |
-| npm | **live** — https://www.npmjs.com/package/pnpm11-ci-guard (`npx pnpm11-ci-guard` verified from the registry) |
-| GitHub | **live** — https://github.com/Booyaka101/pnpm11-ci-guard (`v1.1.0` + moving `v1`) |
-| Release | **live** — https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.1.0 |
-| CI | **green** — 8/8 matrix (ubuntu+windows × node 18/20/22/24) plus the dogfood job that runs the Action against both examples |
-| Docs PR to pnpm | **open** — https://github.com/pnpm/pnpm.io/pull/845 |
+| npm | **live** — https://www.npmjs.com/package/pnpm11-ci-guard @ 1.2.0 (`npx pnpm11-ci-guard` verified from the registry) |
+| GitHub | **live** — https://github.com/Booyaka101/pnpm11-ci-guard (`v1.2.0` + moving `v1`) |
+| Release | **live** — https://github.com/Booyaka101/pnpm11-ci-guard/releases/tag/v1.2.0 |
+| CI | **green** — 10/10 matrix (ubuntu+windows × node 18/20/22/24/26) plus the dogfood job that runs the Action against both examples |
+| Docs PR to pnpm | **APPROVED, open** — https://github.com/pnpm/pnpm.io/pull/845 |
 | Marketplace | **NOT DONE — needs the web UI**, see below |
+
+The pnpm PR was reviewed (CodeRabbit), one real contradiction found and fixed —
+`migration.md` said Docker images "must" copy the file while `docker.md` said it
+could be omitted — and it is now approved. Its only red check is Vercel's preview
+deploy, which a pnpm team member has to authorize for outside contributors.
 
 ### The one remaining step (owner, ~60 seconds, phone is fine)
 
