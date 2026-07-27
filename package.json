@@ -47,7 +47,7 @@
   },
   "scripts": {
     "build": "node scripts/build-action.js",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node scripts/test.js",
     "pretest": "node scripts/build-action.js",
     "selfcheck": "node bin/cli.js --dir ."
   },
