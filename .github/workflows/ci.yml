@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Test
+        run: npm test
+
+      - name: Bundle is not stale
+        run: git diff --exit-code -- dist/action.js
+
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard this repository
+        uses: ./
+        with:
+          root-dir: examples/clean-project
+          mode: fail
+
+      - name: Detects the broken example (expected to fail)
+        id: broken
+        continue-on-error: true
+        uses: ./
+        with:
+          root-dir: examples/broken-project
+          mode: fail
+
+      - name: Assert the broken example was caught
+        run: |
+          if [ "${{ steps.broken.outcome }}" != "failure" ]; then
+            echo "::error::pnpm11-ci-guard did not fail on examples/broken-project"
+            exit 1
+          fi
+          echo "Caught ${{ steps.broken.outputs.fail-count }} FAIL and ${{ steps.broken.outputs.warn-count }} WARN findings."

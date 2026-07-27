@@ -1,0 +1,10 @@
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production \
+    npm_config_prefer_offline=true \
+    npm_config_//registry.npmjs.org/:_authToken=secret \
+    OTHER=1
+RUN echo "not an install: pnpm import" && \
+    echo "pnpm run install-deps"
+COPY pnpm-workspace.yaml .
+RUN pnpm install

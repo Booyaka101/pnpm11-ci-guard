@@ -1,0 +1,16 @@
+{
+  "name": "fixture-full",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "pnpm": "^11.6.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "semver@<7.5.2": ">=7.5.2"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": ["react"]
+    }
+  }
+}

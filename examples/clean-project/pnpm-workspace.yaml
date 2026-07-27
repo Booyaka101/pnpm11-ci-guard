@@ -1,0 +1,13 @@
+packages:
+  - 'packages/*'
+
+# Migrated out of package.json's "pnpm" field, which pnpm v11 ignores.
+overrides:
+  semver@<7.5.2: '>=7.5.2'
+
+peerDependencyRules:
+  ignoreMissing:
+    - react
+
+onlyBuiltDependencies:
+  - sharp

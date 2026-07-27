@@ -1,0 +1,8 @@
+name: Broken
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+   steps:
+      - run: echo hi
+        env: [this, is, not, a, map

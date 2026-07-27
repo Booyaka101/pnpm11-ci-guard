@@ -1,0 +1,42 @@
+name: pnpm11-ci-guard
+description: >-
+  Detect pnpm v11 silent-failure patterns in Dockerfiles, GitHub Actions workflows
+  and package.json — ignored npm_config_* env vars, the dropped 'pnpm' field, and
+  Dockerfiles that never COPY pnpm-workspace.yaml.
+author: Booyaka101
+
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  root-dir:
+    description: Directory to scan, relative to the workspace.
+    required: false
+    default: '.'
+  mode:
+    description: >-
+      fail = exit 1 when a FAIL finding exists (default).
+      warn = report everything but always succeed.
+    required: false
+    default: fail
+  ignore:
+    description: >-
+      Comma-separated rule ids to suppress, e.g.
+      "docker-missing-ci-env,shadowed-builtin-script".
+    required: false
+    default: ''
+
+outputs:
+  fail-count:
+    description: Number of FAIL findings.
+  warn-count:
+    description: Number of WARN findings.
+  ok:
+    description: '"true" when no findings of any severity were produced.'
+  json:
+    description: Full JSON report, identical to `pnpm11-ci-guard --json`.
+
+runs:
+  using: node24
+  main: dist/action.js

@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+
+# Gating build scripts is what makes pnpm v11 want to prompt during an install.
+allowBuilds:
+  sharp: true

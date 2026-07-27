@@ -1,0 +1,11 @@
+{
+  "name": "fixture-shadowed",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "rebuild": "rimraf dist && tsc",
+    "clean": "rimraf dist",
+    "test": "vitest run"
+  }
+}

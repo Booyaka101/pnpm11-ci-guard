@@ -1,0 +1,10 @@
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Explicit script calls — these always meant the script, so nothing changed.
+      - run: pnpm run clean
+      - run: pnpm run build

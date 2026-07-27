@@ -1,0 +1,11 @@
+{
+  "name": "fixture-clean-shadow-only",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "clean": "rimraf dist",
+    "rebuild": "rimraf dist && tsc",
+    "deploy": "wrangler deploy",
+    "setup": "node ./scripts/setup.mjs"
+  }
+}

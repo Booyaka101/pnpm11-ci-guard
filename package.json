@@ -1,0 +1,57 @@
+{
+  "name": "pnpm11-ci-guard",
+  "version": "1.1.0",
+  "description": "Detect pnpm v11 silent-failure patterns in Dockerfiles, GitHub Actions workflows and package.json — npm_config_* env vars that are now ignored, the dropped 'pnpm' field, and Dockerfiles that never COPY pnpm-workspace.yaml.",
+  "keywords": [
+    "pnpm",
+    "pnpm11",
+    "pnpm-v11",
+    "migration",
+    "ci",
+    "github-actions",
+    "dockerfile",
+    "lint",
+    "npm_config",
+    "pnpm-workspace"
+  ],
+  "homepage": "https://github.com/Booyaka101/pnpm11-ci-guard#readme",
+  "bugs": {
+    "url": "https://github.com/Booyaka101/pnpm11-ci-guard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Booyaka101/pnpm11-ci-guard.git"
+  },
+  "license": "MIT",
+  "author": "Booyaka101 <cbosch101@gmail.com>",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "pnpm11-ci-guard": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "dist/",
+    "action.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-action.js",
+    "test": "node --test \"test/*.test.js\"",
+    "pretest": "node scripts/build-action.js",
+    "selfcheck": "node bin/cli.js --dir ."
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

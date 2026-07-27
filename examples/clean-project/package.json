@@ -1,0 +1,13 @@
+{
+  "name": "@acme/storefront",
+  "version": "4.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vite": "^6.0.0"
+  }
+}
