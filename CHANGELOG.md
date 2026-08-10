@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] — 2026-08-10
+
+### Fixed
+
+- **`dist/action.js` rebuilt for js-yaml 5.2.3.** Dependabot bumped the dependency
+  but does not regenerate the committed bundle, so the published action still
+  embedded 5.2.2. Consumers pinning `@v1` were running the older parser.
+
+## [1.2.2] — 2026-07-27
+
+### Changed
+
+- **`action.yml` description shortened to 125 characters** to satisfy the GitHub
+  Marketplace limit (it was 209, which blocked publishing). No behaviour change.
+
+## [1.2.1] — 2026-07-27
+
+### Fixed
+
+- **README action snippet moved off `actions/checkout@v4`**, three majors behind
+  current. That README ships in the npm tarball, so the package page was handing
+  out a stale action to anyone copying it. No code change.
+
 ## [1.2.0] — 2026-07-27
 
 Everything this repo depends on is now on its current major, and kept there
