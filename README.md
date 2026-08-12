@@ -288,16 +288,6 @@ npm test          # node --test — 93 tests, no test-framework dependency
 `dist/action.js` is a committed build artifact. A test asserts it is byte-identical
 to a fresh build, so a stale bundle fails CI.
 
-## Distribution
-
-**Best first step: publish the Action to the GitHub Actions Marketplace.** The npm
-CLI is the same code, but the Action is where the audience is — every repo that hit
-a silent v11 regression is already staring at a workflow file. Tag `v1.1.0`, push a
-moving `v1` tag, then *Draft a release → Publish this Action to the Marketplace*
-(`action.yml` already has the required `name`, `description`, `author`, `branding`).
-Publish to npm second. The natural pitch is one line: *the codemod does your config,
-this does your CI.*
-
 ## Related
 
 [**npm-script-lens**](https://github.com/Booyaka101/npm-script-lens) audits what a
