@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: pnpm v11 migration guide
+    url: https://pnpm.io/
+    about: The upstream codemod and what it does and does not cover.
+  - name: pnpm issue tracker
+    url: https://github.com/pnpm/pnpm/issues
+    about: If pnpm itself behaves differently from its documented v11 behaviour.
+  - name: Security issue
+    url: https://github.com/Booyaka101/pnpm11-ci-guard/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.

@@ -1,0 +1,45 @@
+name: Bug report
+description: Something didn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, and what came back.
+      placeholder: |
+        $ npx pnpm11-ci-guard
+        Error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: pnpm11-ci-guard version
+      description: Output of `npx pnpm11-ci-guard --version`
+    validations:
+      required: true
+
+  - type: input
+    id: runtime
+    attributes:
+      label: Node version, pnpm version and OS
+      description: Output of `node --version` and `pnpm --version`, plus your OS.
+      placeholder: v22.18.0, pnpm 10.4.1, on Ubuntu 24.04
+    validations:
+      required: true
+
+  - type: textarea
+    id: file
+    attributes:
+      label: The Dockerfile or workflow fragment
+      description: The smallest snippet that reproduces it. A wrong `--fix` edit is much easier to fix with the before and after side by side.
+      render: yaml
