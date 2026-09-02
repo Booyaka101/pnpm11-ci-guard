@@ -18,3 +18,6 @@ tmp/
 
 # dist/action.js is a committed build artifact — GitHub Actions runs it directly.
 # Do NOT ignore it.
+
+# Local build notes, not for the public repo
+PROGRESS.md
