@@ -12,6 +12,9 @@ const RULES = {
   UNSUPPORTED_GLOBAL_INSTALL: 'unsupported-global-install',
   DOCKER_MISSING_CI_ENV: 'docker-missing-ci-env',
   UNREADABLE_INPUT: 'unreadable-input',
+  PNPM12_RESOLUTION_ONLY: 'pnpm12-resolution-only',
+  PNPM12_UNKNOWN_WORKSPACE_SETTING: 'pnpm12-unknown-workspace-setting',
+  PNPM12_SSH_GIT_DEPENDENCY: 'pnpm12-ssh-git-dependency',
 };
 
 /** Every rule id, for `--ignore` validation and `--help` output. */
@@ -45,6 +48,34 @@ function makeFinding(spec) {
   };
 }
 
+/**
+ * Every checker skips a file it cannot read, and they all say it the same way so the
+ * rule reads identically whichever input type tripped it.
+ */
+function unreadableFileFinding(file) {
+  return makeFinding({
+    severity: 'warn',
+    rule: RULES.UNREADABLE_INPUT,
+    file,
+    message: `WARN: ${file}: could not be read (permission denied or not valid UTF-8) — skipped`,
+    short: `${file}: unreadable, skipped`,
+  });
+}
+
+/** Same, for a file that is readable text but not parseable YAML. */
+function invalidYamlFinding(file, err) {
+  const raw = err ? err.reason || err.message || String(err) : null;
+  const reason = raw ? String(raw).split(/\r?\n/)[0].trim() : 'unknown parse error';
+  return makeFinding({
+    severity: 'warn',
+    rule: RULES.UNREADABLE_INPUT,
+    file,
+    line: err && err.mark && typeof err.mark.line === 'number' ? err.mark.line + 1 : null,
+    message: `WARN: ${file}: not valid YAML (${reason}) — skipped`,
+    short: `${file}: invalid YAML (${reason}), skipped`,
+  });
+}
+
 /** Repo-relative, forward-slashed path — stable output across Windows/Linux. */
 function relPath(rootDir, absPath) {
   const rel = path.relative(rootDir, absPath);
@@ -64,4 +95,12 @@ function sortFindings(findings) {
   });
 }
 
-module.exports = { RULES, ALL_RULES, makeFinding, relPath, sortFindings };
+module.exports = {
+  RULES,
+  ALL_RULES,
+  makeFinding,
+  unreadableFileFinding,
+  invalidYamlFinding,
+  relPath,
+  sortFindings,
+};

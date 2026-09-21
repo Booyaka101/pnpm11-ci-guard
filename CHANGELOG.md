@@ -3,6 +3,58 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-09-21
+
+### Added
+
+- **Three rules for the v11 to v12 hop.** pnpm 12.0 landed on 2026-08-26, after the
+  last release here. The v10 to v11 rules are unchanged.
+- **`pnpm12-resolution-only` (FAIL).** A Dockerfile `RUN` line or a workflow `run:`
+  block calling `pnpm install --resolution-only`. pnpm 12 does not implement the flag
+  and rejects the command with `error: unexpected argument '--resolution-only' found`,
+  so the step exits non-zero. The replacement is `pnpm peers check`, which reads the
+  peer dependency issues out of the lockfile and needs neither a re-resolution nor an
+  install. This is the only change in pnpm 12 that stops a build rather than changing
+  a result.
+- **`pnpm12-unknown-workspace-setting` (FAIL or WARN).** A top-level key in
+  `pnpm-workspace.yaml` that is not a pnpm setting. pnpm 11 ignored such a key without
+  a word, so a misspelled `minimumReleaseAge` reads as a policy in force while it has
+  never applied. Severity follows pnpm's own split: FAIL when package.json pins pnpm
+  through `packageManager` or `devEngines.packageManager`, because pnpm 12 then stops
+  the command with `ERR_PNPM_UNRECOGNIZED_WORKSPACE_SETTINGS`, and WARN otherwise. A
+  key within edit distance 2 of a real setting is named in the message. A key that is
+  nowhere near one stays a warning even under a pin, so a setting introduced by a
+  future pnpm never hard-fails a green pipeline.
+- **`pnpm12-ssh-git-dependency` (WARN).** A dependency specified as
+  `git+ssh://git@github.com/...` (or gitlab.com, or bitbucket.org). pnpm 12 resolves
+  every specifier for those three hosts through the HTTPS URL and never records an SSH
+  one, so an image or runner holding only an SSH deploy key loses access. The fix is
+  `git config --global url."git@github.com:".insteadOf https://github.com/`. Hosts pnpm
+  does not recognise keep their exact URL, and a URL carrying embedded credentials is
+  left alone, so neither is flagged.
+- **`src/pnpm-settings.js`**, a snapshot of the 288 settings pnpm recognises, read from
+  pnpm's own recognizer on 2026-09-21 against pnpm 12.5.1, with the 30 keys pnpm
+  refuses from a workspace file rather than erroring on.
+
+### Changed
+
+- `--help` splits its rule list into v10 to v11 and v11 to v12 sections.
+- A workflow `run:` finding now points at the step that carries the command instead of
+  the first line mentioning the same subcommand.
+- The clean-run summary and the job summary mention v12.
+- A `packageManager` pin carrying a corepack `+sha512` hash is quoted by version alone.
+- Annotation titles read `pnpm11-ci-guard: <rule>` instead of `pnpm v11: <rule>`, which was
+  wrong on a v12 finding and inconsistent with the tool's own error annotations.
+- The `unreadable-input` finding for a file that cannot be read or does not parse as YAML
+  now comes from one builder in `src/findings.js` instead of a copy per checker. Output is
+  byte-identical, verified against a recorded baseline over every fixture in both modes.
+
+### Not changed
+
+- **`--fix` does not touch the new rules, deliberately.** Rewriting
+  `--resolution-only` into a separate `pnpm peers check` step changes what the pipeline
+  does, and inserting a git config line into someone's image is not a mechanical edit.
+
 ## [1.2.3] — 2026-08-10
 
 ### Fixed

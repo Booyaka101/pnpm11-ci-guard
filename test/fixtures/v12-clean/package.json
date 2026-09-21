@@ -1,0 +1,10 @@
+{
+  "name": "fixture-v12-clean",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "dependencies": {
+    "internal-lib": "git+https://github.com/acme/internal-lib.git",
+    "is-positive": "github:kevva/is-positive"
+  }
+}

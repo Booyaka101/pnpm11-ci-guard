@@ -1,0 +1,14 @@
+{
+  "name": "@acme/storefront",
+  "version": "4.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@acme/design-tokens": "git+ssh://git@github.com/acme/design-tokens.git",
+    "vite": "^6.0.0"
+  }
+}

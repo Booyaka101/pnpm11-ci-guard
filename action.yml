@@ -1,6 +1,6 @@
 name: pnpm11-ci-guard
 # Marketplace rejects a description of 125 characters or more.
-description: 'Catch the pnpm v11 migration in your Dockerfiles and CI workflows — where pnpm''s own codemod never looks.'
+description: 'Catch the pnpm v11 and v12 migrations in your Dockerfiles and CI workflows, where pnpm''s own codemod never looks.'
 author: Booyaka101
 
 branding:
@@ -21,7 +21,7 @@ inputs:
   ignore:
     description: >-
       Comma-separated rule ids to suppress, e.g.
-      "docker-missing-ci-env,shadowed-builtin-script".
+      "docker-missing-ci-env,pnpm12-ssh-git-dependency".
     required: false
     default: ''
 

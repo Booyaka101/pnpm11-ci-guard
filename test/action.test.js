@@ -63,7 +63,7 @@ test('the action reports findings, sets outputs, writes a summary and exits 1', 
   });
 
   assert.equal(code, 1);
-  assert.match(stdout, /^::error file=package\.json,line=\d+,title=/m);
+  assert.match(stdout, /^::error file=package\.json,line=\d+,title=pnpm11-ci-guard%3A [a-z0-9-]+::/m);
   assert.match(stdout, /^::warning file=\.github\/workflows\/ci\.yml,line=\d+,title=/m);
   assert.match(stdout, /=== FAIL ===/);
 

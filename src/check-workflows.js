@@ -3,10 +3,18 @@
 const yaml = require('js-yaml');
 const { readTextFile } = require('./walk.js');
 const { isIgnoredNpmConfigKey, toPnpmConfigKey } = require('./npm-config.js');
-const { RULES, makeFinding, relPath } = require('./findings.js');
+const {
+  RULES,
+  makeFinding,
+  unreadableFileFinding,
+  invalidYamlFinding,
+  relPath,
+} = require('./findings.js');
 const {
   findPnpmInvocations,
   isUnsupportedGlobalInstall,
+  usesRemovedResolutionOnly,
+  resolutionOnlyFinding,
   shadowedBuiltinCall,
 } = require('./pnpm-commands.js');
 
@@ -37,15 +45,7 @@ function checkWorkflows({ rootDir, workflows }) {
     const source = readTextFile(abs);
 
     if (source === null) {
-      findings.push(
-        makeFinding({
-          severity: 'warn',
-          rule: RULES.UNREADABLE_INPUT,
-          file,
-          message: `WARN: ${file}: could not be read (permission denied or not valid UTF-8) — skipped`,
-          short: `${file}: unreadable, skipped`,
-        })
-      );
+      findings.push(unreadableFileFinding(file));
       continue;
     }
 
@@ -53,17 +53,7 @@ function checkWorkflows({ rootDir, workflows }) {
     try {
       doc = yaml.load(source, { filename: abs, json: false });
     } catch (err) {
-      const reason = describeYamlError(err);
-      findings.push(
-        makeFinding({
-          severity: 'warn',
-          rule: RULES.UNREADABLE_INPUT,
-          file,
-          line: err && err.mark && typeof err.mark.line === 'number' ? err.mark.line + 1 : null,
-          message: `WARN: ${file}: not valid YAML (${reason}) — skipped`,
-          short: `${file}: invalid YAML (${reason}), skipped`,
-        })
-      );
+      findings.push(invalidYamlFinding(file, err));
       continue;
     }
 
@@ -120,6 +110,10 @@ function checkWorkflows({ rootDir, workflows }) {
           );
         }
 
+        if (usesRemovedResolutionOnly(invocation)) {
+          findings.push(resolutionOnlyFinding({ file, line, context }));
+        }
+
         const builtin = shadowedBuiltinCall(invocation);
         if (builtin) {
           builtinCalls.push({ file, line, name: builtin, segment: invocation.segment, context });
@@ -158,10 +152,13 @@ function checkWorkflows({ rootDir, workflows }) {
 /** Locate the raw YAML line a `run:` segment came from. */
 function locateRunSegmentLine(lines, invocation) {
   const needle = invocation.subcommand ? `pnpm ${invocation.subcommand}` : 'pnpm';
+  let fallback = null;
   for (let i = 0; i < lines.length; i += 1) {
-    if (lines[i].includes(needle)) return i + 1;
+    // The whole segment pins the right step when a workflow runs pnpm more than once.
+    if (lines[i].includes(invocation.segment)) return i + 1;
+    if (fallback === null && lines[i].includes(needle)) fallback = i + 1;
   }
-  return null;
+  return fallback;
 }
 
 /** Best-effort line lookup so the report can point at the offending YAML line. */
@@ -190,12 +187,6 @@ function describeStep(step, index) {
     if (snippet) return `#${index + 1} ('${snippet}')`;
   }
   return `#${index + 1}`;
-}
-
-function describeYamlError(err) {
-  if (!err) return 'unknown parse error';
-  const reason = err.reason || err.message || String(err);
-  return String(reason).split('\n')[0].trim();
 }
 
 module.exports = { checkWorkflows, locateEnvKeyLine, describeStep };

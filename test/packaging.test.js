@@ -80,7 +80,7 @@ test('--help lists exactly the rules that actually exist', () => {
     assert.ok(USAGE.includes(rule), `--help does not document the '${rule}' rule`);
   }
   // And nothing that was removed lingers in the help text.
-  const documented = USAGE.match(/^\s{2}(?:FAIL|WARN)\s{2}([a-z-]+)/gm)
+  const documented = USAGE.match(/^\s{2}(?:FAIL|WARN)\s{2}([a-z0-9-]+)/gm)
     .map((l) => l.trim().split(/\s+/)[1]);
   for (const rule of documented) {
     assert.ok(ALL_RULES.includes(rule), `--help documents '${rule}', which is not a real rule`);

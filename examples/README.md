@@ -1,13 +1,13 @@
 # Examples
 
-Two throwaway sample projects used to demonstrate the tool. **Nothing here is part
+Three throwaway sample projects used to demonstrate the tool. **Nothing here is part
 of the shipped package** — they exist so you can see real output before pointing
 `pnpm11-ci-guard` at your own repo.
 
 ## `broken-project/`
 
 A realistic pnpm v10-era setup that upgrades to v11 and breaks silently. It trips
-every rule:
+every v10 to v11 rule:
 
 ```bash
 npx pnpm11-ci-guard --dir examples/broken-project
@@ -21,4 +21,15 @@ The same project after migration. Nothing is reported:
 ```bash
 npx pnpm11-ci-guard --dir examples/clean-project
 # exits 0
+```
+
+## `v12-project/`
+
+A project that is fine on pnpm 11 and breaks on pnpm 12: a removed flag in both the
+Dockerfile and the workflow, a misspelled `minimumReleaseAge` under a `packageManager`
+pin, and a dependency reached over SSH.
+
+```bash
+npx pnpm11-ci-guard --dir examples/v12-project
+# exits 1
 ```

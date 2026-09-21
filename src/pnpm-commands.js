@@ -7,6 +7,10 @@
  * (step `run:` blocks) so a `pnpm rebuild` is recognised identically in each.
  */
 
+const { RULES, makeFinding } = require('./findings.js');
+
+const DOCS_V12 = 'https://pnpm.io/blog/whats-different-in-pnpm-12';
+
 /**
  * pnpm v11 built-in commands that a same-named package.json script now shadows.
  *
@@ -119,6 +123,40 @@ function isUnsupportedGlobalInstall(invocation) {
 }
 
 /**
+ * DETECTION 8 — `pnpm install --resolution-only`. pnpm 12 dropped the flag, and its
+ * argument parser rejects the command outright rather than ignoring it.
+ */
+function usesRemovedResolutionOnly(invocation) {
+  return isInstall(invocation) && invocation.flags.includes('--resolution-only');
+}
+
+/**
+ * The finding for the above, shared by the Dockerfile and workflow checkers because the
+ * command and the advice are identical in both; only the location differs.
+ *
+ * @param {{file: string, line: number|null, context: string}} site
+ */
+function resolutionOnlyFinding({ file, line, context }) {
+  const where = line == null ? file : `${file}:${line}`;
+  return makeFinding({
+    severity: 'fail',
+    rule: RULES.PNPM12_RESOLUTION_ONLY,
+    file,
+    line,
+    context,
+    key: '--resolution-only',
+    message:
+      `FAIL: ${where}: \`pnpm install --resolution-only\` (${context}) stops the build on ` +
+      `pnpm 12 with "error: unexpected argument '--resolution-only' found". Run ` +
+      '`pnpm peers check` instead: it reads the peer dependency issues out of the lockfile, ' +
+      'so it needs neither a re-resolution nor an install.',
+    short: `${where}: \`pnpm install --resolution-only\` is removed in pnpm 12 (use \`pnpm peers check\`)`,
+    fix: 'Replace with `pnpm peers check`',
+    docs: DOCS_V12,
+  });
+}
+
+/**
  * A bare `pnpm <name>` where <name> is a shadowable built-in. `pnpm run <name>`
  * is unambiguous and always meant the script, so it is never flagged.
  */
@@ -135,5 +173,7 @@ module.exports = {
   findPnpmInvocations,
   isInstall,
   isUnsupportedGlobalInstall,
+  usesRemovedResolutionOnly,
+  resolutionOnlyFinding,
   shadowedBuiltinCall,
 };

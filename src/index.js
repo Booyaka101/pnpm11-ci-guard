@@ -6,6 +6,7 @@ const path = require('node:path');
 const { walkProject, readTextFile } = require('./walk.js');
 const { checkDockerfiles } = require('./check-dockerfiles.js');
 const { checkWorkflows } = require('./check-workflows.js');
+const { checkWorkspaceYaml } = require('./check-workspace-yaml.js');
 const { checkPackageJson, BUILD_APPROVAL_KEYS } = require('./check-package-json.js');
 const { RULES, ALL_RULES, makeFinding, sortFindings } = require('./findings.js');
 const { formatText, formatJson } = require('./report.js');
@@ -21,7 +22,7 @@ class ScanError extends Error {
 }
 
 /**
- * Run every pnpm v11 check against a project directory.
+ * Run every pnpm v10 to v11 and v11 to v12 check against a project directory.
  *
  * @param {Object} [options]
  * @param {string} [options.dir='.'] project root to scan
@@ -46,8 +47,8 @@ function scan(options = {}) {
 
   const { dockerfiles, workflows, packageJsons, errors } = walkProject(rootDir);
 
-  const hasWorkspaceYaml = fileExists(path.join(rootDir, 'pnpm-workspace.yaml'))
-    || fileExists(path.join(rootDir, 'pnpm-workspace.yml'));
+  const workspaceYaml = findWorkspaceYaml(rootDir);
+  const hasWorkspaceYaml = workspaceYaml !== null;
 
   const findings = [];
 
@@ -75,8 +76,18 @@ function scan(options = {}) {
     hasBuildApproval,
   });
   const workflowResult = checkWorkflows({ rootDir, workflows });
+  const workspaceResult = checkWorkspaceYaml({
+    rootDir,
+    workspaceYaml,
+    pnpmPin: pkgResult.pnpmPin,
+  });
 
-  findings.push(...pkgResult.findings, ...dockerResult.findings, ...workflowResult.findings);
+  findings.push(
+    ...pkgResult.findings,
+    ...dockerResult.findings,
+    ...workflowResult.findings,
+    ...workspaceResult.findings
+  );
 
   // ---- DETECTION 5 (correlated) --------------------------------------------
   // A shadowing script is only a WARN on its own. It becomes a FAIL once a
@@ -158,7 +169,7 @@ function correlateShadowedBuiltins({ shadowedScripts, builtinCalls }) {
 }
 
 /**
- * `--ignore docker-missing-ci-env,shadowed-builtin-script` — the escape hatch that
+ * `--ignore docker-missing-ci-env,pnpm12-ssh-git-dependency` — the escape hatch that
  * stops a team ripping the whole tool out over one noisy rule.
  */
 function normalizeIgnore(ignore) {
@@ -188,7 +199,7 @@ function buildSummary({ fail, warn, scanned, hasWorkspaceYaml, suppressed }) {
     : 'no pnpm-workspace.yaml at root';
   const suppressedText = suppressed > 0 ? `, ${suppressed} suppressed by --ignore` : '';
   if (fail.length === 0 && warn.length === 0) {
-    return `No pnpm v11 issues found — ${scannedText} (${wsText})${suppressedText}.`;
+    return `No pnpm v11 issues found and nothing that breaks on v12 — ${scannedText} (${wsText})${suppressedText}.`;
   }
   return `${fail.length} fail, ${warn.length} warn${suppressedText} — ${scannedText} (${wsText}).`;
 }
@@ -236,6 +247,15 @@ function workspaceGatesBuildScripts(rootDir) {
     }
   }
   return false;
+}
+
+/** The root pnpm-workspace.yaml, under either spelling, or null. */
+function findWorkspaceYaml(rootDir) {
+  for (const name of ['pnpm-workspace.yaml', 'pnpm-workspace.yml']) {
+    const abs = path.join(rootDir, name);
+    if (fileExists(abs)) return abs;
+  }
+  return null;
 }
 
 function fileExists(absPath) {

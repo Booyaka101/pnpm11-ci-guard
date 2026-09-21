@@ -1,0 +1,8 @@
+$schema: https://pnpm.io/workspace-schema.json
+packages:
+  - 'packages/*'
+node-linker: isolated
+minimumReleaseAge: 1440
+onlyBuiltDependencies:
+  - esbuild
+shamefullyHoist:
