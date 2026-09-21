@@ -51,7 +51,13 @@ function formatText(result, opts = {}) {
   if (result.mode === 'warn' && result.fail.length > 0) {
     out.push(paint('  (mode=warn — exiting 0 despite FAIL findings)', 'dim', color));
   }
-  out.push(paint('  Docs: https://pnpm.io/blog/releases/11.0', 'dim', color));
+  out.push(
+    paint(
+      '  Docs: https://pnpm.io/blog/releases/11.0 and https://pnpm.io/blog/whats-different-in-pnpm-12',
+      'dim',
+      color
+    )
+  );
 
   return out.join('\n');
 }
@@ -96,7 +102,7 @@ function formatAnnotations(result) {
 function annotation(level, finding) {
   const props = [`file=${escapeProp(finding.file)}`];
   if (finding.line) props.push(`line=${finding.line}`);
-  props.push(`title=${escapeProp('pnpm v11: ' + finding.rule)}`);
+  props.push(`title=${escapeProp('pnpm11-ci-guard: ' + finding.rule)}`);
   return `::${level} ${props.join(',')}::${escapeData(finding.message)}`;
 }
 
@@ -117,7 +123,7 @@ function formatMarkdown(result) {
   md.push('');
 
   if (result.fail.length === 0 && result.warn.length === 0) {
-    md.push('No pnpm v11 silent-failure patterns detected.');
+    md.push('No pnpm v11 silent-failure patterns detected, and nothing that breaks on v12.');
     return md.join('\n');
   }
 
@@ -128,12 +134,20 @@ function formatMarkdown(result) {
     md.push(`| ${sev} | \`${f.file}\` | ${f.line || ''} | ${escapeCell(f.message)} |`);
   }
   md.push('');
-  md.push('Reference: <https://pnpm.io/blog/releases/11.0>');
+  md.push(
+    'Reference: <https://pnpm.io/blog/releases/11.0> and ' +
+      '<https://pnpm.io/blog/whats-different-in-pnpm-12>'
+  );
   return md.join('\n');
 }
 
+// Backslashes go first. Escaping only the pipe turns a literal `\|` in a dependency
+// name or a settings key into an escaped backslash followed by a live column break.
 function escapeCell(value) {
-  return String(value).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 module.exports = { formatText, formatJson, formatAnnotations, formatMarkdown, COLORS };

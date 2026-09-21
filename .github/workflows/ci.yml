@@ -56,10 +56,23 @@ jobs:
           root-dir: examples/broken-project
           mode: fail
 
-      - name: Assert the broken example was caught
+      - name: Detects the v12 example (expected to fail)
+        id: v12
+        continue-on-error: true
+        uses: ./
+        with:
+          root-dir: examples/v12-project
+          mode: fail
+
+      - name: Assert both broken examples were caught
         run: |
           if [ "${{ steps.broken.outcome }}" != "failure" ]; then
             echo "::error::pnpm11-ci-guard did not fail on examples/broken-project"
             exit 1
           fi
+          if [ "${{ steps.v12.outcome }}" != "failure" ]; then
+            echo "::error::pnpm11-ci-guard did not fail on examples/v12-project"
+            exit 1
+          fi
           echo "Caught ${{ steps.broken.outputs.fail-count }} FAIL and ${{ steps.broken.outputs.warn-count }} WARN findings."
+          echo "Caught ${{ steps.v12.outputs.fail-count }} FAIL and ${{ steps.v12.outputs.warn-count }} WARN findings on the v12 example."

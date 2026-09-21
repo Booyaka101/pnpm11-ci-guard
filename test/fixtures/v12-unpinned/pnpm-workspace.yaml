@@ -1,0 +1,4 @@
+packages:
+  - 'packages/*'
+nodeLinker: isolated
+minimumReleasAge: 1440

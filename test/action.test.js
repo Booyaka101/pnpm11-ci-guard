@@ -63,7 +63,7 @@ test('the action reports findings, sets outputs, writes a summary and exits 1', 
   });
 
   assert.equal(code, 1);
-  assert.match(stdout, /^::error file=package\.json,line=\d+,title=/m);
+  assert.match(stdout, /^::error file=package\.json,line=\d+,title=pnpm11-ci-guard%3A [a-z0-9-]+::/m);
   assert.match(stdout, /^::warning file=\.github\/workflows\/ci\.yml,line=\d+,title=/m);
   assert.match(stdout, /=== FAIL ===/);
 
@@ -76,6 +76,27 @@ test('the action reports findings, sets outputs, writes a summary and exits 1', 
   const summary = fs.readFileSync(summaryFile, 'utf8');
   assert.match(summary, /## pnpm11-ci-guard/);
   assert.match(summary, /\| Severity \| File \| Line \| Issue \|/);
+});
+
+test('a backslash in a message cannot break out of the summary table', () => {
+  const { formatMarkdown } = require(path.join(ROOT, 'src', 'report.js'));
+
+  const md = formatMarkdown({
+    summary: '1 fail, 0 warn',
+    fail: [
+      {
+        severity: 'fail',
+        file: 'package.json',
+        line: 3,
+        message: 'dependencies.a\\|b is not valid',
+      },
+    ],
+    warn: [],
+  });
+
+  const row = md.split('\n').find((line) => line.includes('is not valid'));
+  assert.ok(row.includes('dependencies.a\\\\\\|b'));
+  assert.equal(row.match(/(?<!\\)\|/g).length, 5);
 });
 
 test('the action exits 0 on a clean project', async (t) => {

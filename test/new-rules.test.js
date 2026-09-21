@@ -9,8 +9,17 @@ const {
   parsePnpmInvocation,
   findPnpmInvocations,
   isUnsupportedGlobalInstall,
+  usesRemovedResolutionOnly,
   shadowedBuiltinCall,
 } = require('../src/pnpm-commands.js');
+const { httpsResolvedSshHost, readPnpmPin } = require('../src/check-package-json.js');
+const {
+  SNAPSHOT_DATE,
+  isKnownSetting,
+  isRefusedSetting,
+  closestKnownSetting,
+} = require('../src/pnpm-settings.js');
+const { applyFixes } = require('../src/fix.js');
 
 const FIXTURES = path.join(__dirname, 'fixtures');
 const fixture = (name) => path.join(FIXTURES, name);
@@ -182,4 +191,226 @@ test('every rule id a finding can carry is in ALL_RULES', () => {
   }
   assert.ok(seen.size >= 7, `expected most rules to be exercised, saw ${[...seen].join(', ')}`);
   for (const rule of seen) assert.ok(ALL_RULES.includes(rule), `${rule} missing from ALL_RULES`);
+});
+
+// --- pnpm v11 to v12 ------------------------------------------------------
+
+test('usesRemovedResolutionOnly only matches an install carrying the flag', () => {
+  const only = (cmd) => usesRemovedResolutionOnly(findPnpmInvocations(cmd)[0]);
+  assert.equal(only('pnpm install --resolution-only'), true);
+  assert.equal(only('pnpm i --frozen-lockfile --resolution-only'), true);
+  assert.equal(only('pnpm install --frozen-lockfile'), false);
+  assert.equal(only('pnpm peers check'), false);
+  assert.equal(only('pnpm update --resolution-only'), false);
+});
+
+test('the worked example: a pinned project fails on the flag and on the typo', () => {
+  const result = scan({ dir: fixture('v12-pinned') });
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.fail.length, 2, shorts(result.fail));
+  assert.equal(result.warn.length, 0, shorts(result.warn));
+
+  const [flag] = byRule(result.fail, RULES.PNPM12_RESOLUTION_ONLY);
+  assert.equal(flag.file, 'Dockerfile');
+  assert.equal(flag.line, 6);
+  assert.match(flag.message, /unexpected argument '--resolution-only' found/);
+  assert.match(flag.message, /pnpm peers check/);
+  assert.match(flag.message, /neither a re-resolution nor an install/);
+
+  const [setting] = byRule(result.fail, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING);
+  assert.equal(setting.file, 'pnpm-workspace.yaml');
+  assert.equal(setting.line, 4);
+  assert.match(setting.message, /ERR_PNPM_UNRECOGNIZED_WORKSPACE_SETTINGS/);
+  assert.match(setting.message, /minimumReleaseAge/);
+  assert.match(setting.message, /packageManager \(pnpm@12\.5\.1\)/);
+});
+
+test('dropping the pnpm pin turns the same typo into a warning', () => {
+  const result = scan({ dir: fixture('v12-unpinned') });
+
+  assert.equal(byRule(result.fail, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING).length, 0);
+  const [setting] = byRule(result.warn, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING);
+  assert.equal(setting.severity, 'warn');
+  assert.match(setting.message, /minimumReleaseAge/);
+  assert.match(setting.message, /once package\.json pins pnpm/);
+
+  // The removed flag still fails, so the exit code does not move.
+  assert.equal(byRule(result.fail, RULES.PNPM12_RESOLUTION_ONLY).length, 1);
+  assert.equal(result.exitCode, 1);
+});
+
+test('devEngines.packageManager counts as a pin, in object or list form', () => {
+  const object = readPnpmPin({
+    devEngines: { packageManager: { name: 'pnpm', version: '12.5.1' } },
+  });
+  assert.deepEqual(object, { source: 'devEngines.packageManager', spec: '12.5.1' });
+
+  const list = readPnpmPin({ devEngines: { packageManager: [{ name: 'pnpm', version: '^12' }] } });
+  assert.deepEqual(list, { source: 'devEngines.packageManager', spec: '^12' });
+
+  assert.equal(readPnpmPin({ devEngines: { packageManager: { name: 'yarn' } } }), null);
+  assert.equal(readPnpmPin({ packageManager: 'yarn@4.9.1' }), null);
+  assert.deepEqual(readPnpmPin({ packageManager: 'pnpm@12.5.1' }), {
+    source: 'packageManager',
+    spec: '12.5.1',
+  });
+});
+
+test('an unknown key that is not a near miss stays a warning even under a pin', () => {
+  const result = scan({ dir: fixture('v12-git-ssh') });
+  const [setting] = byRule(result.warn, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING);
+
+  assert.equal(setting.key, 'quantumEntanglementMode');
+  assert.equal(setting.severity, 'warn');
+  assert.match(setting.message, /nowhere near a known setting/);
+  assert.ok(setting.message.includes(SNAPSHOT_DATE));
+  assert.equal(byRule(result.fail, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING).length, 0);
+});
+
+test('the removed flag is caught in a workflow run block too', () => {
+  const result = scan({ dir: fixture('v12-git-ssh') });
+  const [flag] = byRule(result.fail, RULES.PNPM12_RESOLUTION_ONLY);
+
+  assert.equal(flag.file, '.github/workflows/ci.yml');
+  assert.equal(flag.line, 10, 'points at the step carrying the flag, not the first pnpm install');
+  assert.match(flag.context, /Check peers/);
+});
+
+test('ssh git dependencies are flagged only for the hosts pnpm 12 resolves over HTTPS', () => {
+  const result = scan({ dir: fixture('v12-git-ssh') });
+  const ssh = byRule(result.warn, RULES.PNPM12_SSH_GIT_DEPENDENCY);
+
+  assert.deepEqual(ssh.map((f) => f.key).sort(), [
+    'dependencies.design-tokens',
+    'dependencies.internal-lib',
+    'devDependencies.build-helpers',
+  ]);
+  for (const finding of ssh) assert.equal(finding.severity, 'warn');
+
+  const github = ssh.find((f) => f.key === 'dependencies.internal-lib');
+  assert.equal(
+    github.fix,
+    'git config --global url."git@github.com:".insteadOf https://github.com/'
+  );
+  const bitbucket = ssh.find((f) => f.key === 'devDependencies.build-helpers');
+  assert.equal(
+    bitbucket.fix,
+    'git config --global url."git@bitbucket.org:".insteadOf https://bitbucket.org/'
+  );
+});
+
+test('an ssh url with embedded credentials, an unknown host or https is left alone', () => {
+  assert.equal(httpsResolvedSshHost('git+ssh://acme:s3cret@bitbucket.org/a/b.git'), null);
+  assert.equal(httpsResolvedSshHost('git+ssh://git@git.acme.dev/a/b.git'), null);
+  assert.equal(httpsResolvedSshHost('git+https://github.com/a/b.git'), null);
+  assert.equal(httpsResolvedSshHost('github:kevva/is-positive'), null);
+  assert.equal(httpsResolvedSshHost('^1.3.0'), null);
+  assert.equal(httpsResolvedSshHost(null), null);
+  assert.equal(httpsResolvedSshHost('git+ssh://git@GitHub.com/a/b.git'), 'github.com');
+  assert.equal(httpsResolvedSshHost('git+ssh://git@github.com:a/b.git'), 'github.com');
+  assert.equal(httpsResolvedSshHost('ssh://git@gitlab.com/a/b.git'), 'gitlab.com');
+});
+
+test('the settings snapshot follows what pnpm itself recognises', () => {
+  assert.ok(isKnownSetting('minimumReleaseAge'));
+  assert.ok(isKnownSetting('node-linker'), 'kebab-case spellings are recognised too');
+  assert.ok(isKnownSetting('onlyBuiltDependencies'), 'still a setting in pnpm 12');
+  assert.ok(!isKnownSetting('minimumReleasAge'));
+
+  assert.ok(isRefusedSetting('packageManager'), 'pnpm warns about these instead of erroring');
+  assert.ok(isRefusedSetting('globalBinDir'));
+
+  assert.equal(closestKnownSetting('minimumReleasAge').name, 'minimumReleaseAge');
+  assert.equal(closestKnownSetting('minimumReleasAge').distance, 1);
+  assert.equal(closestKnownSetting('quantumEntanglementMode'), null);
+});
+
+test('a v12-ready project fires none of the three v11 to v12 rules', () => {
+  for (const dir of ['v12-clean', 'clean']) {
+    const result = scan({ dir: fixture(dir) });
+    const v12 = [...result.fail, ...result.warn].filter((f) => f.rule.startsWith('pnpm12-'));
+    assert.equal(v12.length, 0, `${dir}: ${shorts(v12)}`);
+  }
+
+  // A key with no value, a $schema directive and a kebab-case setting are all fine.
+  const clean = scan({ dir: fixture('v12-clean') });
+  assert.equal(clean.exitCode, 0);
+  assert.equal(clean.ok, true);
+});
+
+test('the v11 to v12 rules can be suppressed like any other', () => {
+  const result = scan({
+    dir: fixture('v12-pinned'),
+    ignore: 'pnpm12-resolution-only,pnpm12-unknown-workspace-setting',
+  });
+
+  assert.equal(result.fail.length, 0);
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.suppressed, 2);
+});
+
+test('--fix never touches a v11 to v12 finding', () => {
+  const result = scan({ dir: fixture('v12-pinned') });
+  const fixResult = applyFixes(result, { rootDir: fixture('v12-pinned'), dryRun: true });
+
+  assert.equal(fixResult.changed.length, 0);
+  assert.deepEqual(fixResult.unfixable.map((f) => f.rule).sort(), [
+    'pnpm12-resolution-only',
+    'pnpm12-unknown-workspace-setting',
+  ]);
+});
+
+test('a corepack pin carrying a sha512 hash is quoted by version alone', (t) => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pnpm11-guard-pin-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  const hash = `sha512.${'a'.repeat(128)}`;
+  fs.writeFileSync(
+    path.join(dir, 'package.json'),
+    `${JSON.stringify({ name: 'hashed', packageManager: `pnpm@12.5.1+${hash}` }, null, 2)}\n`
+  );
+  fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'minimumReleasAge: 1440\n');
+
+  const [finding] = scan({ dir }).fail;
+  assert.equal(finding.rule, RULES.PNPM12_UNKNOWN_WORKSPACE_SETTING);
+  assert.match(finding.message, /packageManager \(pnpm@12\.5\.1\)/);
+  assert.ok(!finding.message.includes(hash));
+});
+
+test('two pnpm steps with the same subcommand report their own lines', (t) => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pnpm11-guard-lines-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'package.json'),
+    `${JSON.stringify({ name: 'lines', scripts: { rebuild: 'node build.js' } }, null, 2)}\n`
+  );
+  fs.writeFileSync(
+    path.join(dir, '.github', 'workflows', 'ci.yml'),
+    [
+      'name: CI',
+      'on: push',
+      'jobs:',
+      '  build:',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      '      - name: First',
+      '        run: pnpm rebuild --recursive',
+      '      - name: Second',
+      '        run: pnpm rebuild better-sqlite3',
+      '',
+    ].join('\n')
+  );
+
+  const found = byRule(scan({ dir }).fail, RULES.SHADOWED_BUILTIN_CALL);
+  assert.deepEqual(
+    found.map((f) => f.line),
+    [8, 10]
+  );
 });

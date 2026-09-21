@@ -3,11 +3,13 @@
 const { readTextFile } = require('./walk.js');
 const { parseDockerfile, extractAssignedKeys } = require('./dockerfile-parse.js');
 const { isIgnoredNpmConfigKey, toPnpmConfigKey } = require('./npm-config.js');
-const { RULES, makeFinding, relPath } = require('./findings.js');
+const { RULES, makeFinding, unreadableFileFinding, relPath } = require('./findings.js');
 const {
   findPnpmInvocations,
   isInstall,
   isUnsupportedGlobalInstall,
+  usesRemovedResolutionOnly,
+  resolutionOnlyFinding,
   shadowedBuiltinCall,
 } = require('./pnpm-commands.js');
 
@@ -39,15 +41,7 @@ function checkDockerfiles({ rootDir, dockerfiles, hasWorkspaceYaml, hasBuildAppr
     const source = readTextFile(abs);
 
     if (source === null) {
-      findings.push(
-        makeFinding({
-          severity: 'warn',
-          rule: RULES.UNREADABLE_INPUT,
-          file,
-          message: `WARN: ${file}: could not be read (permission denied or not valid UTF-8) — skipped`,
-          short: `${file}: unreadable, skipped`,
-        })
-      );
+      findings.push(unreadableFileFinding(file));
       continue;
     }
 
@@ -104,6 +98,10 @@ function checkDockerfiles({ rootDir, dockerfiles, hasWorkspaceYaml, hasBuildAppr
               docs: DOCS_MIGRATION,
             })
           );
+        }
+
+        if (usesRemovedResolutionOnly(invocation)) {
+          findings.push(resolutionOnlyFinding({ file, line, context: 'RUN' }));
         }
 
         const builtin = shadowedBuiltinCall(invocation);

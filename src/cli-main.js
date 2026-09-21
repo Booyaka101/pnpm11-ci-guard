@@ -9,7 +9,8 @@ const USAGE = `pnpm11-ci-guard v${VERSION}
 
   Catch the pnpm v11 migration in the two places pnpm's own codemod does not
   reach: your Dockerfiles and your CI workflows. These changes keep the build
-  green while quietly ignoring your configuration.
+  green while quietly ignoring your configuration. The v11 to v12 hop is
+  checked too, including the one removed flag that stops a build outright.
 
 USAGE
   npx pnpm11-ci-guard [options]
@@ -26,22 +27,32 @@ OPTIONS
   -h, --help          Show this help
   -v, --version       Print the version
 
-CHECKS
-  FAIL  package-json-pnpm-field       'pnpm' field is ignored by v11 (run pnpm's codemod)
-  FAIL  docker-missing-workspace-copy installs pnpm deps, never COPYs pnpm-workspace.yaml
-  FAIL  shadowed-builtin-call         \`pnpm rebuild\` now runs your script, not the built-in
-  FAIL  unsupported-global-install    \`pnpm install -g\` with no args is gone in v11
-  WARN  docker-npm-config-env         ENV/ARG npm_config_* is no longer read
-  WARN  workflow-npm-config-env       env.npm_config_* is no longer read
-  WARN  docker-missing-ci-env         gates build scripts but sets no \`ENV CI=true\`
-  WARN  unreadable-input              malformed YAML/JSON — reported, never fatal
+CHECKS (v10 to v11)
+  FAIL  package-json-pnpm-field          'pnpm' field is ignored by v11 (run pnpm's codemod)
+  FAIL  docker-missing-workspace-copy    installs pnpm deps, never COPYs pnpm-workspace.yaml
+  FAIL  shadowed-builtin-call            \`pnpm rebuild\` now runs your script, not the built-in
+  FAIL  unsupported-global-install       \`pnpm install -g\` with no args is gone in v11
+  WARN  docker-npm-config-env            ENV/ARG npm_config_* is no longer read
+  WARN  workflow-npm-config-env          env.npm_config_* is no longer read
+  WARN  docker-missing-ci-env            gates build scripts but sets no \`ENV CI=true\`
 
   URL-scoped auth (npm_config_//registry.example.com/:_authToken) is NEVER flagged —
   pnpm 11.6+ still reads it.
 
+CHECKS (v11 to v12)
+  FAIL  pnpm12-resolution-only           \`pnpm install --resolution-only\` is rejected by v12
+  FAIL  pnpm12-unknown-workspace-setting unknown pnpm-workspace.yaml key (FAIL when pnpm is pinned)
+  WARN  pnpm12-ssh-git-dependency        git+ssh:// dep on a host v12 resolves over HTTPS
+
+ALWAYS
+  WARN  unreadable-input                 malformed YAML/JSON — reported, never fatal
+
 AUTOFIXABLE
   docker-npm-config-env, workflow-npm-config-env, docker-missing-workspace-copy.
   The 'pnpm' field is migrated by pnpm's own codemod: pnpx codemod run pnpm-v10-to-v11
+  The v11 to v12 rules are deliberately not autofixable: swapping --resolution-only for a
+  \`pnpm peers check\` step changes what the pipeline does, and adding a git config line to
+  someone's image is not a mechanical edit.
 
 EXIT CODES
   0  no FAIL findings (or --mode warn)
@@ -55,7 +66,7 @@ EXAMPLES
   npx pnpm11-ci-guard --dir ./services/api --ignore docker-missing-ci-env
   npx pnpm11-ci-guard --json | jq '.fail[].message'
 
-Docs: https://pnpm.io/migration
+Docs: https://pnpm.io/migration and https://pnpm.io/blog/whats-different-in-pnpm-12
 `;
 
 const KNOWN_FLAGS = new Set([

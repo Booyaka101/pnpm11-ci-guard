@@ -1,0 +1,17 @@
+{
+  "name": "fixture-v12-git-ssh",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "dependencies": {
+    "internal-lib": "git+ssh://git@github.com/acme/internal-lib.git",
+    "design-tokens": "ssh://git@gitlab.com/acme/design-tokens.git",
+    "legacy-tools": "git+ssh://git@git.acme.dev/acme/legacy-tools.git",
+    "token-fetched": "git+ssh://acme:s3cret@bitbucket.org/acme/token-fetched.git",
+    "is-positive": "github:kevva/is-positive",
+    "left-pad": "^1.3.0"
+  },
+  "devDependencies": {
+    "build-helpers": "git+ssh://git@bitbucket.org/acme/build-helpers.git"
+  }
+}
