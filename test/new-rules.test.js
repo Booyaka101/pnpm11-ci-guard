@@ -379,3 +379,38 @@ test('a corepack pin carrying a sha512 hash is quoted by version alone', (t) => 
   assert.match(finding.message, /packageManager \(pnpm@12\.5\.1\)/);
   assert.ok(!finding.message.includes(hash));
 });
+
+test('two pnpm steps with the same subcommand report their own lines', (t) => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pnpm11-guard-lines-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'package.json'),
+    `${JSON.stringify({ name: 'lines', scripts: { rebuild: 'node build.js' } }, null, 2)}\n`
+  );
+  fs.writeFileSync(
+    path.join(dir, '.github', 'workflows', 'ci.yml'),
+    [
+      'name: CI',
+      'on: push',
+      'jobs:',
+      '  build:',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      '      - name: First',
+      '        run: pnpm rebuild --recursive',
+      '      - name: Second',
+      '        run: pnpm rebuild better-sqlite3',
+      '',
+    ].join('\n')
+  );
+
+  const found = byRule(scan({ dir }).fail, RULES.SHADOWED_BUILTIN_CALL);
+  assert.deepEqual(
+    found.map((f) => f.line),
+    [8, 10]
+  );
+});

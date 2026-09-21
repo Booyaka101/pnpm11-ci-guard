@@ -400,7 +400,7 @@ npx pnpm11-ci-guard --dir examples/v12-project      # 3 fail, 1 warn → exit 1
 ```bash
 npm install
 npm run build     # regenerate the self-contained dist/action.js
-npm test          # node --test — 106 tests, no test-framework dependency
+npm test          # node --test — 107 tests, no test-framework dependency
 ```
 
 `dist/action.js` is a committed build artifact. A test asserts it is byte-identical

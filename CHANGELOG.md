@@ -40,7 +40,9 @@ All notable changes to this project are documented here. This project adheres to
 
 - `--help` splits its rule list into v10 to v11 and v11 to v12 sections.
 - A workflow `run:` finding now points at the step that carries the command instead of
-  the first line mentioning the same subcommand.
+  the first line mentioning the same subcommand. This also corrects the line on a v11
+  finding when one workflow runs the same pnpm subcommand twice: two `pnpm rebuild`
+  steps used to be reported at the first step's line, twice.
 - The clean-run summary and the job summary mention v12.
 - A `packageManager` pin carrying a corepack `+sha512` hash is quoted by version alone.
 - Annotation titles read `pnpm11-ci-guard: <rule>` instead of `pnpm v11: <rule>`, which was
