@@ -5617,8 +5617,13 @@ function formatMarkdown(result) {
   return md.join('\n');
 }
 
+// Backslashes go first. Escaping only the pipe turns a literal `\|` in a dependency
+// name or a settings key into an escaped backslash followed by a live column break.
 function escapeCell(value) {
-  return String(value).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 module.exports = { formatText, formatJson, formatAnnotations, formatMarkdown, COLORS };

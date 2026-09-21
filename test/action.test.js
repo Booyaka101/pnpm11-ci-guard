@@ -78,6 +78,27 @@ test('the action reports findings, sets outputs, writes a summary and exits 1', 
   assert.match(summary, /\| Severity \| File \| Line \| Issue \|/);
 });
 
+test('a backslash in a message cannot break out of the summary table', () => {
+  const { formatMarkdown } = require(path.join(ROOT, 'src', 'report.js'));
+
+  const md = formatMarkdown({
+    summary: '1 fail, 0 warn',
+    fail: [
+      {
+        severity: 'fail',
+        file: 'package.json',
+        line: 3,
+        message: 'dependencies.a\\|b is not valid',
+      },
+    ],
+    warn: [],
+  });
+
+  const row = md.split('\n').find((line) => line.includes('is not valid'));
+  assert.ok(row.includes('dependencies.a\\\\\\|b'));
+  assert.equal(row.match(/(?<!\\)\|/g).length, 5);
+});
+
 test('the action exits 0 on a clean project', async (t) => {
   const dir = tempDir(t);
   const outputFile = path.join(dir, 'output.txt');

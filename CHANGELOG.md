@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] — 2026-09-21
+## [1.3.0] — 2026-09-22
 
 ### Added
 
@@ -50,6 +50,12 @@ All notable changes to this project are documented here. This project adheres to
 - The `unreadable-input` finding for a file that cannot be read or does not parse as YAML
   now comes from one builder in `src/findings.js` instead of a copy per checker. Output is
   byte-identical, verified against a recorded baseline over every fixture in both modes.
+
+### Fixed
+
+- **A backslash in a finding message no longer breaks the job summary table.** The cell
+  escaper handled `|` but not `\`, so a message containing `\|` produced an escaped
+  backslash followed by a live column break. Caught by CodeQL on the release PR.
 
 ### Not changed
 
