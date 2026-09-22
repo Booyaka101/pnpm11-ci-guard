@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-09-22
+
+### Fixed
+
+- **js-yaml 5.4.1 shipped to npm and `@v1`.** The bump merged after the 1.3.0 tag,
+  so the released bundle still embedded 5.3.0. 5.4.1 caps merge sequence size and
+  counts empty mappings toward `maxTotalMergeKeys`, closing a CPU-exhaustion path
+  ([nodeca/js-yaml#797](https://github.com/nodeca/js-yaml/issues/797)). This tool
+  parses workflow files and `pnpm-workspace.yaml` out of whatever repository it runs
+  against, so the parser is reached by input the runner did not write. No rule
+  behaviour change.
+
 ## [1.3.0] — 2026-09-22
 
 ### Added
