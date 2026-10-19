@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-19
+
+### Changed
+
+- Update js-yaml from 5.4.1 to 5.4.2 and regenerate the committed action bundle.
+
 ## [1.3.1] — 2026-09-22
 
 ### Fixed
