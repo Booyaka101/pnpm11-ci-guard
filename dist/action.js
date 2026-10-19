@@ -35,7 +35,7 @@ module.exports = {
 });
 
 __define("js-yaml", function (module, exports, require) {
-/*! js-yaml 5.4.1 https://github.com/nodeca/js-yaml @license MIT */
+/*! js-yaml 5.4.2 https://github.com/nodeca/js-yaml @license MIT */
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 //#region src/tag.ts
 /**
@@ -2968,6 +2968,7 @@ function doubleQuoteWhitespaceOnly(layout) {
 function applyForceQuotesOption(layout) {
 	if (!layout.presenterOptions.forceQuotes) return;
 	if (layout.isKey || layout.style !== SCALAR_STYLE.PLAIN) return;
+	if (layout.node.tag !== layout.presenterOptions.schema.defaultScalarTag.tagName) return;
 	layout.style = layout.node.value.includes("\n") ? SCALAR_STYLE.DOUBLE_QUOTED : _preferredQuotedStyle(layout);
 }
 function tryLongOrMultilineAsBlock(layout) {
