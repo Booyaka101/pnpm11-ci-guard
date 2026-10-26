@@ -54,6 +54,6 @@
     "selfcheck": "node bin/cli.js --dir ."
   },
   "dependencies": {
-    "js-yaml": "^5.4.2"
+    "js-yaml": "^5.5.0"
   }
 }
