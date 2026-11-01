@@ -21,6 +21,12 @@ All notable changes to this project are documented here. This project adheres to
   different step or input. Explain fixable findings without source lines in the
   fix report instead of silently dropping them.
 
+## [1.3.2] - 2026-10-19
+
+### Changed
+
+- Update js-yaml from 5.4.1 to 5.4.2 and regenerate the committed action bundle.
+
 ## [1.3.1] — 2026-09-22
 
 ### Fixed

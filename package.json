@@ -1,6 +1,6 @@
 {
   "name": "pnpm11-ci-guard",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Detect pnpm v11 and v12 breakage in Dockerfiles, GitHub Actions workflows and package.json: npm_config_* env vars that are now ignored, the dropped 'pnpm' field, Dockerfiles that never COPY pnpm-workspace.yaml, the removed --resolution-only flag, and unrecognized pnpm-workspace.yaml settings.",
   "keywords": [
     "pnpm",
@@ -54,6 +54,6 @@
     "selfcheck": "node bin/cli.js --dir ."
   },
   "dependencies": {
-    "js-yaml": "^5.2.2"
+    "js-yaml": "^5.5.0"
   }
 }

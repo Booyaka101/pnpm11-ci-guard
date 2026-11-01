@@ -5,9 +5,8 @@ name: Release
 # id-token: write is what makes --provenance work. npm rejects the flag without
 # it, and the permission is never granted by default.
 #
-# Needs an NPM_TOKEN secret (automation token). Without one the build and tests
-# still run as release validation and the publish step skips cleanly, so a tag
-# push never red-Xs just because CI cannot do the interactive 2FA.
+# Needs an NPM_TOKEN secret (automation token). A missing credential must fail
+# publication rather than report a successful release that is absent from npm.
 on:
   push:
     tags: ['v*']
@@ -46,14 +45,23 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "No NPM_TOKEN configured. Build and tests passed; publish by hand." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
           VERSION=$(node -p "require('./package.json').version")
           if npm view "pnpm11-ci-guard@$VERSION" version >/dev/null 2>&1; then
             echo "pnpm11-ci-guard@$VERSION is already on the registry, nothing to do." >> "$GITHUB_STEP_SUMMARY"
           else
+            if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+              echo "::error::NPM_TOKEN is missing; pnpm11-ci-guard@$VERSION was not published."
+              echo "Publication failed: NPM_TOKEN is missing. Build and tests alone do not complete a release." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
             npm publish --provenance --access public
-            echo "Published pnpm11-ci-guard@$VERSION with provenance." >> "$GITHUB_STEP_SUMMARY"
+            for attempt in $(seq 1 12); do
+              if npm view "pnpm11-ci-guard@$VERSION" version >/dev/null 2>&1; then
+                echo "Published and verified pnpm11-ci-guard@$VERSION with provenance." >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "::error::npm accepted publication, but pnpm11-ci-guard@$VERSION is not publicly available yet."
+            exit 1
           fi
