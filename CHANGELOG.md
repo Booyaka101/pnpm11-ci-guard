@@ -17,9 +17,11 @@ All notable changes to this project are documented here. This project adheres to
 
 ### Fixed
 
-- Skip ambiguous composite environment-key locations rather than autofixing a
-  different step or input. Explain fixable findings without source lines in the
-  fix report instead of silently dropping them.
+- Use structural YAML source locations for workflow and composite step keys and
+  commands. Repeated keys can be fixed independently without touching inputs or
+  block-scalar text. Leave aliases, shared anchors, flow mappings, escaped keys
+  and existing replacement-key collisions for manual review. Explain skipped
+  fixes instead of silently dropping findings without safe source lines.
 
 ## [1.3.2] - 2026-10-19
 

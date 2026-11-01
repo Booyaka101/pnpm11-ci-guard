@@ -1,6 +1,7 @@
 'use strict';
 
 const yaml = require('js-yaml');
+const { yamlSource } = require('./yaml-source.js');
 const { readTextFile } = require('./walk.js');
 const { isIgnoredNpmConfigKey, toPnpmConfigKey } = require('./npm-config.js');
 const {
@@ -61,17 +62,17 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
 
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) continue;
 
-    const lines = source.split(/\r?\n/);
+    const locations = yamlSource(source);
 
     if (actionPaths.has(abs)) {
       if (doc.runs && doc.runs.using === 'composite') {
-        inspectSteps(doc.runs.steps, 'composite action', 'runs.steps');
+        inspectSteps(doc.runs.steps, 'composite action', ['runs', 'steps']);
       }
       continue;
     }
 
-    collect(doc.env, 'workflow root', 'env');
-    collect(doc.defaults && doc.defaults.env, 'workflow defaults', 'defaults.env');
+    collect(doc.env, 'workflow root', ['env']);
+    collect(doc.defaults && doc.defaults.env, 'workflow defaults', ['defaults', 'env']);
 
     const jobs = doc.jobs;
     if (jobs && typeof jobs === 'object' && !Array.isArray(jobs)) {
@@ -79,9 +80,9 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
         const job = jobs[jobId];
         if (!job || typeof job !== 'object' || Array.isArray(job)) continue;
 
-        collect(job.env, `job '${jobId}'`, `jobs.${jobId}.env`);
+        collect(job.env, `job '${jobId}'`, ['jobs', jobId, 'env']);
 
-        inspectSteps(job.steps, `job '${jobId}'`, `jobs.${jobId}.steps`);
+        inspectSteps(job.steps, `job '${jobId}'`, ['jobs', jobId, 'steps']);
       }
     }
 
@@ -91,17 +92,17 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
         const step = steps[i];
         if (!step || typeof step !== 'object' || Array.isArray(step)) continue;
         const context = `step ${describeStep(step, i)} in ${parent}`;
-        collect(step.env, context, `${jsonPath}[${i}].env`);
-        inspectRun(step, context);
+        collect(step.env, context, [...jsonPath, i, 'env']);
+        inspectRun(step, context, [...jsonPath, i, 'run']);
       }
     }
 
     /** DETECTION 6 + `pnpm <builtin>` call sites inside a step's `run:` script. */
-    function inspectRun(step, context) {
+    function inspectRun(step, context, sourcePath) {
       if (typeof step.run !== 'string' || step.run.trim() === '') return;
 
       for (const invocation of findPnpmInvocations(step.run)) {
-        const line = locateRunSegmentLine(lines, invocation);
+        const line = locations.runLine(sourcePath, invocation);
 
         if (isUnsupportedGlobalInstall(invocation)) {
           const where = line == null ? file : `${file}:${line}`;
@@ -138,7 +139,8 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
       for (const key of Object.keys(envObj)) {
         if (!isIgnoredNpmConfigKey(key)) continue;
         const renamed = toPnpmConfigKey(key);
-        const line = locateEnvKeyLine(lines, key, actionPaths.has(abs));
+        const collision = Object.keys(envObj).some((name) => name.toLowerCase() === renamed.toLowerCase());
+        const line = collision ? null : locations.envKeyLine(jsonPath, key);
         const where = line == null ? file : `${file}:${line}`;
         findings.push(
           makeFinding({
@@ -150,7 +152,8 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
             context,
             message: `WARN: ${file}: env.${key} in ${context} is silently ignored by pnpm v11`,
             short: `${where}: env.${key} in ${context} — silently ignored (rename: ${renamed})`,
-            fix: `Rename to ${renamed} (${jsonPath})`,
+            fix: collision ? `Resolve existing ${renamed} before renaming ${key}` :
+              `Rename to ${renamed} (${formatPath(jsonPath)})`,
             docs: DOCS_V11,
           })
         );
@@ -161,37 +164,8 @@ function checkWorkflows({ rootDir, workflows, actions = [] }) {
   return { findings, builtinCalls };
 }
 
-/** Locate the raw YAML line a `run:` segment came from. */
-function locateRunSegmentLine(lines, invocation) {
-  const needle = invocation.subcommand ? `pnpm ${invocation.subcommand}` : 'pnpm';
-  let fallback = null;
-  for (let i = 0; i < lines.length; i += 1) {
-    // The whole segment pins the right step when a workflow runs pnpm more than once.
-    if (lines[i].includes(invocation.segment)) return i + 1;
-    if (fallback === null && lines[i].includes(needle)) fallback = i + 1;
-  }
-  return fallback;
-}
-
-/** Best-effort line lookup so the report can point at the offending YAML line. */
-function locateEnvKeyLine(lines, key, requireUnique = false) {
-  let found = null;
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    const idx = line.indexOf(key);
-    if (idx === -1) continue;
-    const before = line.slice(0, idx).trim();
-    const after = line.slice(idx + key.length).trimStart();
-    // A YAML mapping key: nothing but indent (or a quote) before it, a colon after.
-    if ((before === '' || before === '"' || before === "'") && /^["']?\s*:/.test(after)) {
-      if (!requireUnique) return i + 1;
-      // Repeated keys can belong to different steps or action metadata. Do not
-      // offer a line-local autofix unless the source location is unambiguous.
-      if (found !== null) return null;
-      found = i + 1;
-    }
-  }
-  return found;
+function formatPath(parts) {
+  return parts.map((part, i) => typeof part === 'number' ? `[${part}]` : `${i ? '.' : ''}${part}`).join('');
 }
 
 function describeStep(step, index) {
@@ -206,4 +180,4 @@ function describeStep(step, index) {
   return `#${index + 1}`;
 }
 
-module.exports = { checkWorkflows, locateEnvKeyLine, describeStep };
+module.exports = { checkWorkflows, describeStep };

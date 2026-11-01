@@ -119,16 +119,108 @@ test('composite discovery respects dependency/build exclusions', (t) => {
   assert.equal(scan({ dir }).scanned.actions, 0);
 });
 
-test('repeated composite keys report findings without fixing the wrong step or metadata', (t) => {
+test('repeated composite keys fix the explicit step rather than input metadata', (t) => {
   const source = action.replace('runs:', 'inputs:\n  npm_config_registry:\n    default: example\nruns:');
   const dir = sandbox(t, { 'action.yml': source });
   const result = scan({ dir });
   const warning = result.warn.find((f) => f.rule === RULES.WORKFLOW_NPM_CONFIG_ENV);
-  assert.equal(warning.line, null);
+  assert.equal(warning.line, 11);
   const fixed = applyFixes(result, { rootDir: dir });
-  assert.equal(fixed.changed.length, 0);
-  assert.equal(fixed.skipped.length, 1);
+  assert.equal(fixed.changed.length, 1);
+  assert.equal(fixed.skipped.length, 0);
+  assert.equal(fs.readFileSync(path.join(dir, 'action.yml'), 'utf8'),
+    source.replace("npm_config_registry: 'https", "pnpm_config_registry: 'https"));
+});
+
+test('block-scalar fake keys are never edited, even when the real environment is a flow map', (t) => {
+  const source = `description: |
+  npm_config_registry: documentation only
+runs:
+  using: composite
+  steps:
+    - env: {npm_config_registry: real}
+      run: echo ok
+`;
+  const dir = sandbox(t, { 'action.yml': source });
+  const result = scan({ dir });
+  assert.equal(result.warn[0].line, null);
+  assert.equal(applyFixes(result, { rootDir: dir }).skipped.length, 1);
   assert.equal(fs.readFileSync(path.join(dir, 'action.yml'), 'utf8'), source);
+});
+
+for (const env of [
+  'env: *shared',
+  'env:\n        <<: *shared',
+  'env: &local\n        npm_config_registry: real',
+  'env:\n        "npm_config_\\u0072egistry": real',
+  'env:\n        npm_config_registry: real\n        pnpm_config_registry: existing',
+  'env:\n        npm_config_registry: real\n        PNPM_CONFIG_REGISTRY: existing',
+]) {
+  test(`unsafe environment locations remain manual: ${env.split('\n')[0]} ${env.slice(-25)}`, (t) => {
+    const source = `shared: &shared
+  npm_config_registry: real
+runs:
+  using: composite
+  steps:
+    - ${env}
+      run: echo ok
+`;
+    const dir = sandbox(t, { 'action.yml': source });
+    const result = scan({ dir });
+    // js-yaml's default YAML 1.2 schema leaves legacy merge keys unresolved.
+    const expected = env.includes('<<:') ? 0 : 1;
+    assert.equal(result.warn.length, expected);
+    if (expected) {
+      assert.equal(result.warn[0].rule, RULES.WORKFLOW_NPM_CONFIG_ENV);
+      assert.equal(result.warn[0].line, null);
+    }
+    assert.equal(applyFixes(result, { rootDir: dir }).skipped.length, expected);
+    assert.equal(fs.readFileSync(path.join(dir, 'action.yml'), 'utf8'), source);
+  });
+}
+
+for (const name of ['action.yml', '.github/workflows/ci.yml']) {
+  test(`repeated env keys and commands are scoped to each step in ${name}`, (t) => {
+    const steps = `    - env:
+        npm_config_registry: first
+      run: pnpm install -g
+    - env:
+        'npm_config_registry': second
+      run: pnpm install -g
+`;
+    const source = name === 'action.yml' ?
+      `description: pnpm install -g\nruns:\n  using: composite\n  steps:\n${steps}` :
+      `name: pnpm install -g\njobs:\n  build.with.dots:\n    steps:\n${steps.replace(/^/gm, '  ')}`;
+    const dir = sandbox(t, { [name]: source });
+    const result = scan({ dir });
+    assert.deepEqual(result.fail.map((f) => f.line), [7, 10]);
+    assert.deepEqual(result.warn.map((f) => f.line), [6, 9]);
+    const fixed = applyFixes(result, { rootDir: dir });
+    assert.equal(fixed.changed[0].edits.length, 2);
+    assert.equal(scan({ dir }).warn.length, 0);
+    assert.equal(applyFixes(scan({ dir }), { rootDir: dir }).changed.length, 0);
+  });
+}
+
+test('identical commands within one run block retain distinct source lines', (t) => {
+  const source = `runs:
+  using: composite
+  steps:
+    - run: |
+        pnpm install -g
+        pnpm install -g
+`;
+  const dir = sandbox(t, { 'action.yml': source });
+  assert.deepEqual(scan({ dir }).fail.map((f) => f.line), [5, 6]);
+});
+
+test('literal env keys do not collide with fake keys inside block scalars', (t) => {
+  const source = action.replace('runs:', 'description: |\n  npm_config_registry: fake\nruns:');
+  const dir = sandbox(t, { 'action.yml': source });
+  const fixed = applyFixes(scan({ dir }), { rootDir: dir });
+  assert.equal(fixed.changed[0].edits.length, 1);
+  assert.equal(fs.readFileSync(path.join(dir, 'action.yml'), 'utf8'),
+    source.replace("npm_config_registry: 'https", "pnpm_config_registry: 'https"));
 });
 
 test('malformed action YAML is reported rather than silently skipped', (t) => {

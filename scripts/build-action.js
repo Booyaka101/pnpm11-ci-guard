@@ -30,6 +30,7 @@ const SRC_MODULES = [
   'pnpm-settings.js',
   'check-dockerfiles.js',
   'check-workflows.js',
+  'yaml-source.js',
   'check-package-json.js',
   'check-workspace-yaml.js',
   'report.js',

@@ -393,10 +393,12 @@ npx pnpm11-ci-guard --dir examples/v12-project      # 3 fail, 1 warn → exit 1
   `runs.using: composite`, step `env:` and `run:` blocks use the same checks and
   rule IDs as workflows. JavaScript and Docker action bodies are not analyzed.
   Remote actions and remote reusable workflows are not fetched or followed.
-- **Composite autofixes require an unambiguous source line.** If an environment
-  key occurs more than once in a composite manifest, findings are still reported
-  but the rename is left for a human rather than risking an edit to another step
-  or an input definition. The fix report explains skipped renames.
+- **YAML autofixes require an explicit, safe source location.** Environment keys
+  are matched structurally to their workflow or composite step, even when repeated.
+  Aliases, shared anchors, flow mappings, escaped keys and existing replacement-key
+  collisions are left unchanged rather than risking a different value or shared
+  definition. The fix report explains skipped renames. Legacy YAML merge keys are
+  not resolved by the parser's default YAML 1.2 schema.
 - **`scanned.actions` counts discovered action manifests**, including non-composite
   actions whose step bodies are not analyzed; `scanned.workflows` counts workflows only.
 - **`docker-missing-workspace-copy` is per-file, not per-build-stage.** A COPY in an
