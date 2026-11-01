@@ -61,12 +61,13 @@ function isWorkflowsDir(relDir) {
  *
  * @param {string} rootDir absolute path to scan
  * @param {{ignoreDirs?: Set<string>}} [opts]
- * @returns {{dockerfiles: string[], workflows: string[], packageJsons: string[], errors: {path: string, message: string}[]}}
+ * @returns {{dockerfiles: string[], workflows: string[], actions: string[], packageJsons: string[], errors: {path: string, message: string}[]}}
  */
 function walkProject(rootDir, opts = {}) {
   const ignored = opts.ignoreDirs || DEFAULT_IGNORED_DIRS;
   const dockerfiles = [];
   const workflows = [];
+  const actions = [];
   const packageJsons = [];
   const errors = [];
 
@@ -123,14 +124,17 @@ function walkProject(rootDir, opts = {}) {
         packageJsons.push(childAbs);
       } else if (isYamlName(entry.name) && isWorkflowsDir(path.join(relDir, entry.name))) {
         workflows.push(childAbs);
+      } else if (entry.name === 'action.yml' || entry.name === 'action.yaml') {
+        actions.push(childAbs);
       }
     }
   }
 
   dockerfiles.sort();
   workflows.sort();
+  actions.sort();
   packageJsons.sort();
-  return { dockerfiles, workflows, packageJsons, errors };
+  return { dockerfiles, workflows, actions, packageJsons, errors };
 }
 
 function describeFsError(err) {

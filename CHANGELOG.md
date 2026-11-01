@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Discover local `action.yml` and `action.yaml` manifests and check composite
+  action steps for ignored npm configuration, unsupported global installs,
+  removed resolution-only flags and shadowed built-in commands. Reuse workflow
+  rule IDs, suppression and environment autofixes. Report discovered action
+  manifests separately in `scanned.actions` and the text summary.
+- Cover reusable workflows, non-composite exclusions, malformed manifests,
+  dry-run/idempotent fixes and dependency/build directory exclusions in regressions.
+
+### Fixed
+
+- Skip ambiguous composite environment-key locations rather than autofixing a
+  different step or input. Explain fixable findings without source lines in the
+  fix report instead of silently dropping them.
+
 ## [1.3.1] — 2026-09-22
 
 ### Fixed

@@ -196,7 +196,7 @@ test('an empty directory scans successfully and reports nothing', (t) => {
 
   const result = scan({ dir });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.scanned, { dockerfiles: 0, workflows: 0, packageJsons: 0 });
+  assert.deepEqual(result.scanned, { dockerfiles: 0, workflows: 0, actions: 0, packageJsons: 0 });
 });
 
 test('findings are sorted deterministically by file then line', () => {

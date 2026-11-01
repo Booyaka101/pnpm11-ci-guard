@@ -65,6 +65,11 @@ Node.js ≥ 18.17. One runtime dependency (`js-yaml`).
 
 ## Usage
 
+Local composite actions are scanned automatically, including manifests under
+`.github/actions/` and other project directories. Their `runs.steps` use the same
+environment and pnpm command checks as workflow steps. Reusable workflows under
+`.github/workflows/` are also scanned; no remote action or workflow is downloaded.
+
 ### Fix what can be fixed
 
 ```bash
@@ -72,8 +77,9 @@ npx pnpm11-ci-guard --fix-dry-run    # show every edit, write nothing
 npx pnpm11-ci-guard --fix            # apply them, then report what's left
 ```
 
-`--fix` does the rename the codemod refuses to do, in both Dockerfiles and workflow
-YAML, and inserts the missing `COPY pnpm-workspace.yaml`. Real output:
+`--fix` does the rename the codemod refuses to do, in Dockerfiles, workflow YAML
+and unambiguous composite step environments, and inserts the missing
+`COPY pnpm-workspace.yaml`. Real output:
 
 ```
 === FIXED === (7 edit(s) across 2 file(s), changed)
@@ -276,8 +282,8 @@ npx pnpm11-ci-guard --json
   "ignored": [],
   "suppressed": 0,
   "hasWorkspaceYaml": true,
-  "scanned": { "dockerfiles": 1, "workflows": 1, "packageJsons": 1 },
-  "summary": "3 fail, 7 warn — scanned 1 Dockerfile(s), 1 workflow(s), 1 package.json file(s) (pnpm-workspace.yaml present).",
+  "scanned": { "dockerfiles": 1, "workflows": 1, "actions": 0, "packageJsons": 1 },
+  "summary": "3 fail, 7 warn — scanned 1 Dockerfile(s), 1 workflow(s), 0 action manifest(s), 1 package.json file(s) (pnpm-workspace.yaml present).",
   "fail": [
     {
       "severity": "fail",
@@ -381,8 +387,18 @@ npx pnpm11-ci-guard --dir examples/v12-project      # 3 fail, 1 warn → exit 1
   `docker build --build-arg`, or an `.npmrc`.
 - **Discovery is by filename** (`Dockerfile`, `Dockerfile.*`, `*.dockerfile`,
   case-insensitive). A Dockerfile named something else is missed.
-- **Workflows must live under `.github/workflows/`.** Composite actions and
-  reusable-workflow `env:` blocks elsewhere are not scanned.
+- **Workflows must live under `.github/workflows/`.** Reusable workflows there are
+  scanned normally. Local `action.yml` and `action.yaml` manifests are discovered
+  throughout the project, excluding dependency and build directories. For
+  `runs.using: composite`, step `env:` and `run:` blocks use the same checks and
+  rule IDs as workflows. JavaScript and Docker action bodies are not analyzed.
+  Remote actions and remote reusable workflows are not fetched or followed.
+- **Composite autofixes require an unambiguous source line.** If an environment
+  key occurs more than once in a composite manifest, findings are still reported
+  but the rename is left for a human rather than risking an edit to another step
+  or an input definition. The fix report explains skipped renames.
+- **`scanned.actions` counts discovered action manifests**, including non-composite
+  actions whose step bodies are not analyzed; `scanned.workflows` counts workflows only.
 - **`docker-missing-workspace-copy` is per-file, not per-build-stage.** A COPY in an
   earlier stage that precedes the install counts. This favours false negatives.
 - **`shadowed-builtin-call` only sees literal call sites.** `pnpm $CMD` or a script

@@ -29,18 +29,20 @@ const DOCS_MIGRATION = 'https://pnpm.io/migration';
  * while quietly doing something different from what the author intended.
  *
  * `env:` is walked at all three levels GitHub supports: workflow root, per job,
- * and per step.
+ * and per step. Local composite actions share the per-step checks.
  *
  * @param {Object} input
  * @param {string} input.rootDir
  * @param {string[]} input.workflows absolute paths
+ * @param {string[]} [input.actions] local action manifest paths
  * @returns {{findings: object[], builtinCalls: {file: string, line: number|null, name: string, segment: string}[]}}
  */
-function checkWorkflows({ rootDir, workflows }) {
+function checkWorkflows({ rootDir, workflows, actions = [] }) {
   const findings = [];
   const builtinCalls = [];
 
-  for (const abs of workflows) {
+  const actionPaths = new Set(actions);
+  for (const abs of [...workflows, ...actions]) {
     const file = relPath(rootDir, abs);
     const source = readTextFile(abs);
 
@@ -61,6 +63,13 @@ function checkWorkflows({ rootDir, workflows }) {
 
     const lines = source.split(/\r?\n/);
 
+    if (actionPaths.has(abs)) {
+      if (doc.runs && doc.runs.using === 'composite') {
+        inspectSteps(doc.runs.steps, 'composite action', 'runs.steps');
+      }
+      continue;
+    }
+
     collect(doc.env, 'workflow root', 'env');
     collect(doc.defaults && doc.defaults.env, 'workflow defaults', 'defaults.env');
 
@@ -72,15 +81,18 @@ function checkWorkflows({ rootDir, workflows }) {
 
         collect(job.env, `job '${jobId}'`, `jobs.${jobId}.env`);
 
-        const steps = job.steps;
-        if (!Array.isArray(steps)) continue;
-        for (let i = 0; i < steps.length; i += 1) {
-          const step = steps[i];
-          if (!step || typeof step !== 'object' || Array.isArray(step)) continue;
-          const label = describeStep(step, i);
-          collect(step.env, `step ${label} in job '${jobId}'`, `jobs.${jobId}.steps[${i}].env`);
-          inspectRun(step, `step ${label} in job '${jobId}'`);
-        }
+        inspectSteps(job.steps, `job '${jobId}'`, `jobs.${jobId}.steps`);
+      }
+    }
+
+    function inspectSteps(steps, parent, jsonPath) {
+      if (!Array.isArray(steps)) return;
+      for (let i = 0; i < steps.length; i += 1) {
+        const step = steps[i];
+        if (!step || typeof step !== 'object' || Array.isArray(step)) continue;
+        const context = `step ${describeStep(step, i)} in ${parent}`;
+        collect(step.env, context, `${jsonPath}[${i}].env`);
+        inspectRun(step, context);
       }
     }
 
@@ -126,7 +138,7 @@ function checkWorkflows({ rootDir, workflows }) {
       for (const key of Object.keys(envObj)) {
         if (!isIgnoredNpmConfigKey(key)) continue;
         const renamed = toPnpmConfigKey(key);
-        const line = locateEnvKeyLine(lines, key);
+        const line = locateEnvKeyLine(lines, key, actionPaths.has(abs));
         const where = line == null ? file : `${file}:${line}`;
         findings.push(
           makeFinding({
@@ -162,7 +174,8 @@ function locateRunSegmentLine(lines, invocation) {
 }
 
 /** Best-effort line lookup so the report can point at the offending YAML line. */
-function locateEnvKeyLine(lines, key) {
+function locateEnvKeyLine(lines, key, requireUnique = false) {
+  let found = null;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     const idx = line.indexOf(key);
@@ -171,10 +184,14 @@ function locateEnvKeyLine(lines, key) {
     const after = line.slice(idx + key.length).trimStart();
     // A YAML mapping key: nothing but indent (or a quote) before it, a colon after.
     if ((before === '' || before === '"' || before === "'") && /^["']?\s*:/.test(after)) {
-      return i + 1;
+      if (!requireUnique) return i + 1;
+      // Repeated keys can belong to different steps or action metadata. Do not
+      // offer a line-local autofix unless the source location is unambiguous.
+      if (found !== null) return null;
+      found = i + 1;
     }
   }
-  return null;
+  return found;
 }
 
 function describeStep(step, index) {
