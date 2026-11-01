@@ -42,7 +42,9 @@ function applyFixes(result, opts) {
   const all = [...result.fail, ...result.warn];
   const fixable = all.filter((f) => FIXABLE_RULES.includes(f.rule) && f.line);
   const unfixable = all.filter((f) => !FIXABLE_RULES.includes(f.rule));
-  const skipped = [];
+  const skipped = all
+    .filter((f) => FIXABLE_RULES.includes(f.rule) && !f.line)
+    .map((finding) => ({ finding, reason: 'no unambiguous source line for automatic fixing' }));
 
   /** @type {Map<string, object[]>} */
   const byFile = new Map();

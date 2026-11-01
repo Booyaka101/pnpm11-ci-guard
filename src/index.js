@@ -33,7 +33,7 @@ class ScanError extends Error {
  *   root: string,
  *   mode: 'fail'|'warn',
  *   hasWorkspaceYaml: boolean,
- *   scanned: {dockerfiles: number, workflows: number, packageJsons: number},
+ *   scanned: {dockerfiles: number, workflows: number, actions: number, packageJsons: number},
  *   fail: object[],
  *   warn: object[],
  *   summary: string,
@@ -45,7 +45,7 @@ function scan(options = {}) {
   const ignored = normalizeIgnore(options.ignore); // validate before doing any work
   const rootDir = resolveRoot(options.dir);
 
-  const { dockerfiles, workflows, packageJsons, errors } = walkProject(rootDir);
+  const { dockerfiles, workflows, actions, packageJsons, errors } = walkProject(rootDir);
 
   const workspaceYaml = findWorkspaceYaml(rootDir);
   const hasWorkspaceYaml = workspaceYaml !== null;
@@ -75,7 +75,7 @@ function scan(options = {}) {
     hasWorkspaceYaml,
     hasBuildApproval,
   });
-  const workflowResult = checkWorkflows({ rootDir, workflows });
+  const workflowResult = checkWorkflows({ rootDir, workflows, actions });
   const workspaceResult = checkWorkspaceYaml({
     rootDir,
     workspaceYaml,
@@ -109,6 +109,7 @@ function scan(options = {}) {
   const scanned = {
     dockerfiles: dockerfiles.length,
     workflows: workflows.length,
+    actions: actions.length,
     packageJsons: packageJsons.length,
   };
 
@@ -193,6 +194,7 @@ function buildSummary({ fail, warn, scanned, hasWorkspaceYaml, suppressed }) {
   const scannedText =
     `scanned ${scanned.dockerfiles} Dockerfile(s), ` +
     `${scanned.workflows} workflow(s), ` +
+    `${scanned.actions} action manifest(s), ` +
     `${scanned.packageJsons} package.json file(s)`;
   const wsText = hasWorkspaceYaml
     ? 'pnpm-workspace.yaml present'

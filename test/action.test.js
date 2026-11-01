@@ -78,6 +78,27 @@ test('the action reports findings, sets outputs, writes a summary and exits 1', 
   assert.match(summary, /\| Severity \| File \| Line \| Issue \|/);
 });
 
+test('the bundled action scans local composite actions and reports separate totals', async (t) => {
+  const dir = tempDir(t);
+  const actionDir = path.join(dir, '.github', 'actions', 'install');
+  fs.mkdirSync(actionDir, { recursive: true });
+  fs.writeFileSync(path.join(actionDir, 'action.yaml'), `name: Install
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: pnpm install -g
+`);
+  const outputFile = path.join(dir, 'output.txt');
+  const { code, stdout } = await runNode(BUNDLE, [], {
+    env: { 'INPUT_ROOT-DIR': dir, INPUT_MODE: 'fail', GITHUB_OUTPUT: outputFile },
+  });
+  assert.equal(code, 1);
+  assert.match(stdout, /::error file=\.github\/actions\/install\/action\.yaml,line=6,/);
+  assert.match(stdout, /1 action manifest\(s\)/);
+  assert.match(fs.readFileSync(outputFile, 'utf8'), /"actions":\s*1/);
+});
+
 test('a backslash in a message cannot break out of the summary table', () => {
   const { formatMarkdown } = require(path.join(ROOT, 'src', 'report.js'));
 
